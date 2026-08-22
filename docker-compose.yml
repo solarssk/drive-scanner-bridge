@@ -1,0 +1,132 @@
+services:
+  smb1:
+    image: dperson/samba:latest
+    container_name: smb1-printer
+    restart: unless-stopped
+
+    environment:
+      USERID: "1048"
+      GROUPID: "100"
+
+    networks:
+      smb1_network:
+        # A fixed IP on your own smb1_network subnet -- pick a free address
+        # in that range and keep it stable, since the scanner is configured
+        # to connect to this exact address.
+        ipv4_address: ${SMB1_STATIC_IP:?SMB1_STATIC_IP must be set in .env}
+
+    volumes:
+      # No longer bound to /volume1/printer: the DSM shared folder is now
+      # populated exclusively through drive-uploader via the Synology
+      # Drive API, so Synology Drive's own indexing pipeline is the only
+      # thing that ever writes there. See README "Why this service exists".
+      - scanner_incoming:/share
+      - /volume2/docker/smb1-printer/state:/var/lib/samba
+      - /volume2/docker/smb1-printer/log:/var/log/samba
+      - /volume2/docker/smb1-printer/cache:/var/cache/samba
+
+    command:
+      - "-u"
+      - "prt01;${SMB_PRT01_PASSWORD:?SMB_PRT01_PASSWORD must be set in .env}"
+      - "-s"
+      - "printshare;/share;yes;no;yes;prt01"
+      - "-g"
+      - "workgroup = WORKGROUP"
+      - "-g"
+      - "ntlm auth = yes"
+      - "-g"
+      - "server min protocol = NT1"
+      - "-g"
+      - "client min protocol = NT1"
+      - "-g"
+      - "server max protocol = NT1"
+      - "-g"
+      - "client max protocol = NT1"
+      - "-g"
+      - "lanman auth = yes"
+      - "-g"
+      - "client lanman auth = yes"
+      - "-g"
+      - "client ntlmv2 auth = no"
+      - "-g"
+      - "server signing = disabled"
+      - "-g"
+      - "smb encrypt = disabled"
+      - "-g"
+      - "log level = 1 auth:3"
+      - "-r"
+
+  drive-uploader:
+    # No `build:` here on purpose: Portainer attempts to build whenever a
+    # service has a `build:` section, regardless of whether a matching
+    # `image:` already exists locally -- and its own container generally
+    # can't read host paths like /volume1/..., so that build always fails
+    # with "Cannot locate specified Dockerfile". Build the image
+    # separately instead (Portainer -> Images -> Build a new image ->
+    # Upload a tar of uploader/'s contents, or `docker build -t <tag>
+    # ./uploader` over SSH/locally), then this file only ever *runs* it.
+    # See README "Deploying via Portainer". Bump this tag on every rebuild
+    # (see README "Upgrading") so there is never ambiguity about whether a
+    # redeploy picked up new image content.
+    image: scanner-drive-bridge-uploader:0.2.0
+    container_name: drive-uploader
+    restart: unless-stopped
+    depends_on:
+      - smb1
+
+    # Least privilege: no network reachability to the scanner/Samba segment
+    # is needed here, only outbound HTTPS to the NAS's own DSM port, which
+    # is reachable from the default bridge network. See README
+    # "Troubleshooting" if that assumption doesn't hold in your setup.
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp
+
+    environment:
+      SYNOLOGY_HOST: ${SYNOLOGY_HOST:?SYNOLOGY_HOST must be set in .env}
+      SYNOLOGY_USERNAME: ${SYNOLOGY_USERNAME:-prt01}
+      SYNOLOGY_PASSWORD_FILE: /run/secrets/synology_password
+      SYNOLOGY_CA_FILE: /run/secrets/synology_ca
+      SYNOLOGY_DSM_VERSION: ${SYNOLOGY_DSM_VERSION:-7}
+      SYNOLOGY_DESTINATION: ${SYNOLOGY_DESTINATION:-/team-folders/printer}
+      SYNOLOGY_VERIFY_TLS: ${SYNOLOGY_VERIFY_TLS:-true}
+      CONFLICT_ACTION: ${CONFLICT_ACTION:-autorename}
+      STABILITY_INTERVAL_SECONDS: ${STABILITY_INTERVAL_SECONDS:-2}
+      STABILITY_CHECKS: ${STABILITY_CHECKS:-2}
+      SCAN_INTERVAL_SECONDS: ${SCAN_INTERVAL_SECONDS:-2}
+      RETRY_BACKOFF_SECONDS: ${RETRY_BACKOFF_SECONDS:-5,15,30,60,300}
+      # Set to "false" if the scanner infers its next filename by listing
+      # /incoming itself (some do) and gets confused by it always being
+      # empty. Content-hash dedup still guarantees a kept file is never
+      # re-uploaded. See README "File stabilization".
+      DELETE_AFTER_UPLOAD: ${DELETE_AFTER_UPLOAD:-true}
+      # Only relevant when DELETE_AFTER_UPLOAD=false: auto-remove a kept
+      # local copy this many hours after confirmed upload, so /incoming
+      # doesn't grow without bound while the scanner still sees recent
+      # history. Leave unset to keep every copy forever.
+      LOCAL_RETENTION_HOURS: ${LOCAL_RETENTION_HOURS:-}
+      # Cosmetic only: prefixes the name sent to Synology Drive (never the
+      # local /incoming filename) with today's date, e.g. SCN_0001.pdf ->
+      # 2026-08-22_SCN_0001.pdf, for easier browsing in the Team Folder.
+      TIMESTAMP_UPLOAD_FILENAME: ${TIMESTAMP_UPLOAD_FILENAME:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+    volumes:
+      - scanner_incoming:/incoming
+      - uploader_state:/data
+      # Bind-mounted (not compose `secrets:`) so the optional CA file can
+      # simply be absent instead of every possible secret needing to exist
+      # up front. Only synology_password is required.
+      - ${PROJECT_DIR:-.}/secrets:/run/secrets:ro
+
+networks:
+  smb1_network:
+    external: true
+
+volumes:
+  scanner_incoming:
+  uploader_state:
