@@ -37,7 +37,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Render compose config with placeholder secrets
+      - name: Render compose config with placeholder values
         run: |
-          echo "SMB_PRT01_PASSWORD=ci-placeholder" > .env
+          cat > .env <<'EOF'
+          SMB_PRT01_PASSWORD=ci-placeholder
+          SMB1_STATIC_IP=192.0.2.20
+          SYNOLOGY_HOST=https://192.0.2.10:5001
+          EOF
           docker compose config > /dev/null
