@@ -24,17 +24,25 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: 'pip install --upgrade --only-binary=:all: "pip==26.2.1" "setuptools==84.0.0"'
       - run: 'pip install --only-binary=:all: "pip-audit==2.10.1" && pip-audit'
-      - run: pytest -q --cov=scanner_drive_bridge --cov-report=xml:coverage.xml --cov-report=term
+      - run: pytest -q --cov=scanner_drive_bridge --cov-report=xml:coverage.xml --cov-report=term --junitxml=junit.xml
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() }}
         with:
           name: coverage-report
-          path: uploader/coverage.xml
+          path: |
+            uploader/coverage.xml
+            uploader/junit.xml
           retention-days: 7
 
   code-quality:
     name: Code quality (Sonar + Codecov)
     runs-on: ubuntu-latest
     needs: test
+    # Run even when Unit tests failed -- that's exactly when test-result
+    # analytics (which test failed, flaky-test detection) matters most.
+    # This never masks a test failure: "Unit tests" is its own separate
+    # required status check.
+    if: ${{ !cancelled() }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -44,14 +52,24 @@ jobs:
           name: coverage-report
           path: uploader
       - name: SonarQube Cloud Scan
+        if: ${{ !cancelled() }}
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       - name: Upload coverage to Codecov
+        if: ${{ !cancelled() }}
         uses: codecov/codecov-action@5975040f7f7d40edaff8d784b576fd65ae95c073 # v5.5.5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: uploader/coverage.xml
+          fail_ci_if_error: true
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@5975040f7f7d40edaff8d784b576fd65ae95c073 # v5.5.5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: uploader/junit.xml
+          report_type: test_results
           fail_ci_if_error: true
 
   build-image:
