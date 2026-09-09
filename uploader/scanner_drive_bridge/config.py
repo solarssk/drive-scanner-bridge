@@ -95,7 +95,6 @@ class Config:
     synology_host: str
     synology_username: str
     synology_password: str
-    synology_dsm_version: str
     synology_destination: str
     synology_verify_tls: bool
     synology_ca_file: Optional[str]
@@ -141,7 +140,6 @@ class Config:
             f"synology_host={self.synology_host!r}, "
             f"synology_username={self.synology_username!r}, "
             "synology_password=<redacted>, "
-            f"synology_dsm_version={self.synology_dsm_version!r}, "
             f"synology_destination={self.synology_destination!r}, "
             f"synology_verify_tls={self.synology_verify_tls!r}, "
             f"synology_ca_file={self.synology_ca_file!r}, "
@@ -183,7 +181,6 @@ class Config:
             synology_host=host.rstrip("/"),
             synology_username=username,
             synology_password=password,  # type: ignore[arg-type]
-            synology_dsm_version=(os.environ.get("SYNOLOGY_DSM_VERSION") or "7").strip(),
             synology_destination=destination,
             synology_verify_tls=_get_bool("SYNOLOGY_VERIFY_TLS", True),
             synology_ca_file=ca_file,

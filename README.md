@@ -1,7 +1,31 @@
 # scanner-drive-bridge
 
+[![CI](https://github.com/solarssk/drive-scanner-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/solarssk/drive-scanner-bridge/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Bridges a legacy SMB1 network scanner to Synology Drive, bypassing a
 Synology Drive bug where filesystem events are not reliably consumed.
+
+## Table of Contents
+
+- [Why this service exists](#why-this-service-exists)
+- [Architecture](#architecture)
+- [Why a hand-written Synology Drive API client instead of the `synology-drive-api` library](#why-a-hand-written-synology-drive-api-client-instead-of-the-synology-drive-api-library)
+- [Idempotency strategy](#idempotency-strategy)
+- [File stabilization](#file-stabilization)
+- [Retry behavior](#retry-behavior)
+- [Deployment](#deployment)
+- [Deploying via Portainer](#deploying-via-portainer)
+- [Secrets and credentials](#secrets-and-credentials)
+- [Security](#security)
+- [Scanner flow (unchanged)](#scanner-flow-unchanged)
+- [Backup considerations](#backup-considerations)
+- [Troubleshooting](#troubleshooting)
+- [Upgrading](#upgrading)
+- [Rollback](#rollback)
+- [Development](#development)
+- [Verified compatibility](#verified-compatibility)
+- [License](#license)
 
 ## Why this service exists
 
@@ -547,3 +571,7 @@ you're adapting this for a different DSM version or a different scanner:
 - Some scanners infer their own next filename by listing the destination
   SMB folder -- see `DELETE_AFTER_UPLOAD` / `LOCAL_RETENTION_HOURS` above
   if yours does the same and gets confused by an always-empty folder.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
