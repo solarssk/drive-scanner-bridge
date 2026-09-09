@@ -10,7 +10,6 @@ def make_config(tmp_path):
             synology_host="https://nas.example:5001",
             synology_username="prt01",
             synology_password="super-secret-pw",
-            synology_dsm_version="7",
             synology_destination="/team-folders/printer",
             synology_verify_tls=True,
             synology_ca_file=None,

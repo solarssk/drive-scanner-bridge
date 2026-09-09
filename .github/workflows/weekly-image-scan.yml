@@ -1,0 +1,38 @@
+name: Weekly image scan
+
+# Same weekly cadence as .github/dependabot.yml. Runs the full
+# Critical+High CVE picture against the base image (including findings
+# that drift in from Google's distroless rebuild cadence, not from any
+# code change here) without blocking any PR -- see ci.yml's build-image
+# job for the PR-time Critical-only gate, and SECURITY.md for context.
+# A failed run here just means: check the log, and re-run once distroless
+# publishes an updated image, or bump/pin a newer digest.
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Monday 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Full CVE scan (uploader image)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: ./uploader
+          push: false
+          load: true
+          tags: scanner-drive-bridge-uploader:weekly-scan
+      - name: Scan image for Critical/High vulnerabilities
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: scanner-drive-bridge-uploader:weekly-scan
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"

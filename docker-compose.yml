@@ -91,7 +91,6 @@ services:
       SYNOLOGY_USERNAME: ${SYNOLOGY_USERNAME:-prt01}
       SYNOLOGY_PASSWORD_FILE: /run/secrets/synology_password
       SYNOLOGY_CA_FILE: /run/secrets/synology_ca
-      SYNOLOGY_DSM_VERSION: ${SYNOLOGY_DSM_VERSION:-7}
       SYNOLOGY_DESTINATION: ${SYNOLOGY_DESTINATION:-/team-folders/printer}
       SYNOLOGY_VERIFY_TLS: ${SYNOLOGY_VERIFY_TLS:-true}
       CONFLICT_ACTION: ${CONFLICT_ACTION:-autorename}

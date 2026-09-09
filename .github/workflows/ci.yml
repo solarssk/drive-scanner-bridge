@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Unit tests
@@ -12,31 +15,109 @@ jobs:
       run:
         working-directory: uploader
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
-      - run: pytest -q
+      - run: 'pip install --upgrade --only-binary=:all: "pip==26.2.1" "setuptools==84.0.0"'
+      - run: 'pip install --only-binary=:all: "pip-audit==2.10.1" && pip-audit'
+      - run: pytest -q --cov=scanner_drive_bridge --cov-report=xml:coverage.xml --cov-report=term --junitxml=junit.xml
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() }}
+        with:
+          name: coverage-report
+          path: |
+            uploader/coverage.xml
+            uploader/junit.xml
+          retention-days: 7
+
+  code-quality:
+    name: Code quality (Sonar + Codecov)
+    runs-on: ubuntu-latest
+    needs: test
+    # Run even when Unit tests failed -- that's exactly when test-result
+    # analytics (which test failed, flaky-test detection) matters most.
+    # This never masks a test failure: "Unit tests" is its own separate
+    # required status check.
+    if: ${{ !cancelled() }}
+    env:
+      # `secrets` is not a permitted context inside `if:` conditions (job-
+      # or step-level) -- route the presence check through `env` instead,
+      # which is. Dependabot-triggered runs (and any external fork PR)
+      # don't receive repository Actions secrets, only a separate
+      # Dependabot-secrets store, empty unless configured to match.
+      HAS_SONAR_TOKEN: ${{ secrets.SONAR_TOKEN != '' }}
+      HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: coverage-report
+          path: uploader
+      # Guard each secret-backed step so a run with no token skips cleanly
+      # instead of failing this job outright. This job's own required-check
+      # status still passes on a skip; see CONTRIBUTING.md for the
+      # Dependabot-secrets setup needed so Sonar/Codecov's own external
+      # checks (which have no "skip" concept) still run for real there.
+      - name: SonarQube Cloud Scan
+        if: ${{ !cancelled() && env.HAS_SONAR_TOKEN == 'true' }}
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() && env.HAS_CODECOV_TOKEN == 'true' }}
+        uses: codecov/codecov-action@5975040f7f7d40edaff8d784b576fd65ae95c073 # v5.5.5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: uploader/coverage.xml
+          fail_ci_if_error: true
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() && env.HAS_CODECOV_TOKEN == 'true' }}
+        uses: codecov/codecov-action@5975040f7f7d40edaff8d784b576fd65ae95c073 # v5.5.5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: uploader/junit.xml
+          report_type: test_results
+          fail_ci_if_error: true
 
   build-image:
     name: Build uploader image
     runs-on: ubuntu-latest
     needs: test
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: ./uploader
           push: false
+          load: true
           tags: scanner-drive-bridge-uploader:ci
+      - name: Scan image for Critical vulnerabilities
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: scanner-drive-bridge-uploader:ci
+          format: table
+          # Only CRITICAL blocks a merge here -- HIGH findings in the base
+          # image drift with Google's distroless rebuild cadence, not with
+          # this repo's own code, and would otherwise turn every PR red for
+          # days at a time with nothing mergeable to fix it. The full
+          # picture (CRITICAL+HIGH) still runs weekly, unblocked, in
+          # weekly-image-scan.yml -- see that workflow and SECURITY.md.
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
 
   compose-lint:
     name: Validate docker-compose.yml
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Render compose config with placeholder values
         run: |
           cat > .env <<'EOF'
