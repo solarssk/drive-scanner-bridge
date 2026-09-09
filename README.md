@@ -234,7 +234,7 @@ cd scanner-drive-bridge
 cp .env.example .env
 # edit .env: at minimum set SYNOLOGY_HOST, SMB1_STATIC_IP, SMB_PRT01_PASSWORD
 printf '%s' 'the prt01 DSM password' > secrets/synology_password
-docker build -t scanner-drive-bridge-uploader:0.2.0 ./uploader
+docker build -t scanner-drive-bridge-uploader:0.1.0 ./uploader
 docker compose up -d
 docker compose logs -f drive-uploader
 ```
@@ -296,7 +296,7 @@ Steps:
    (Dockerfile at the tar's root -- this repo's `uploader/` directory,
    tarred up; regenerate it after any Dockerfile/source change). Name it
    explicitly and exactly, matching the `image:` line in
-   `docker-compose.yml` (`scanner-drive-bridge-uploader:0.2.0` by default --
+   `docker-compose.yml` (`scanner-drive-bridge-uploader:0.1.0` by default --
    bump both together on every rebuild, see "Upgrading" below). This builds
    natively for whatever CPU architecture the NAS actually is, no cross-arch
    guessing needed.
@@ -399,7 +399,7 @@ way -- see `uploader/Dockerfile` for the exact stages.
 
 Re-run the scan yourself after any base image bump:
 ```bash
-docker scout cves scanner-drive-bridge-uploader:0.2.0
+docker scout cves scanner-drive-bridge-uploader:0.1.0
 ```
 
 The 0/0/0/0 result above reflects the state at the time the distroless

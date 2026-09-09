@@ -68,7 +68,7 @@ services:
     # See README "Deploying via Portainer". Bump this tag on every rebuild
     # (see README "Upgrading") so there is never ambiguity about whether a
     # redeploy picked up new image content.
-    image: scanner-drive-bridge-uploader:0.2.0
+    image: scanner-drive-bridge-uploader:0.1.0
     container_name: drive-uploader
     restart: unless-stopped
     depends_on:
