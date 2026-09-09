@@ -402,6 +402,19 @@ Re-run the scan yourself after any base image bump:
 docker scout cves scanner-drive-bridge-uploader:0.2.0
 ```
 
+The 0/0/0/0 result above reflects the state at the time the distroless
+migration was made, not a permanent guarantee -- new CVEs get published
+against already-released package versions, and `distroless/python3-debian12`
+carries whatever OS-level shared libraries (glibc, libssl, libsqlite3,
+zlib, etc.) Python's own stdlib links against, each with its own CVE
+history. This is now checked continuously instead of manually: `ci.yml`'s
+`build-image` job fails a PR on any CRITICAL finding with an available fix,
+and `.github/workflows/weekly-image-scan.yml` runs the fuller CRITICAL+HIGH
+picture weekly (same cadence as Dependabot) without blocking merges --
+HIGH findings in OS packages often trail Google's own distroless rebuild
+cadence by days, so gating every PR on them would block unrelated work for
+something no code change here can fix.
+
 ## Scanner flow (unchanged)
 
 The scanner's own configuration does not need to change. It still connects

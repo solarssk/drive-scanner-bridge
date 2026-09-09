@@ -37,12 +37,18 @@ jobs:
           push: false
           load: true
           tags: scanner-drive-bridge-uploader:ci
-      - name: Scan image for Critical/High vulnerabilities
+      - name: Scan image for Critical vulnerabilities
         uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: scanner-drive-bridge-uploader:ci
           format: table
-          severity: CRITICAL,HIGH
+          # Only CRITICAL blocks a merge here -- HIGH findings in the base
+          # image drift with Google's distroless rebuild cadence, not with
+          # this repo's own code, and would otherwise turn every PR red for
+          # days at a time with nothing mergeable to fix it. The full
+          # picture (CRITICAL+HIGH) still runs weekly, unblocked, in
+          # weekly-image-scan.yml -- see that workflow and SECURITY.md.
+          severity: CRITICAL
           ignore-unfixed: true
           exit-code: "1"
 
