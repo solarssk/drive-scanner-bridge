@@ -7,3 +7,6 @@ secrets/*
 .pytest_cache/
 uploader/.venv/
 uploader/*.egg-info/
+uploader/coverage.xml
+uploader/.coverage
+.scannerwork/
