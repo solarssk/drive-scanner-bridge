@@ -43,6 +43,14 @@ jobs:
     # This never masks a test failure: "Unit tests" is its own separate
     # required status check.
     if: ${{ !cancelled() }}
+    env:
+      # `secrets` is not a permitted context inside `if:` conditions (job-
+      # or step-level) -- route the presence check through `env` instead,
+      # which is. Dependabot-triggered runs (and any external fork PR)
+      # don't receive repository Actions secrets, only a separate
+      # Dependabot-secrets store, empty unless configured to match.
+      HAS_SONAR_TOKEN: ${{ secrets.SONAR_TOKEN != '' }}
+      HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -51,28 +59,25 @@ jobs:
         with:
           name: coverage-report
           path: uploader
-      # Dependabot-triggered runs (and any external fork PR) don't receive
-      # repository Actions secrets -- only a separate "Dependabot secrets"
-      # store, which is empty unless configured to match. Guard each
-      # secret-backed step so a run with no token skips cleanly instead of
-      # failing this job outright. This job's own required-check status
-      # still passes on a skip; see SECURITY.md/CONTRIBUTING.md for the
+      # Guard each secret-backed step so a run with no token skips cleanly
+      # instead of failing this job outright. This job's own required-check
+      # status still passes on a skip; see CONTRIBUTING.md for the
       # Dependabot-secrets setup needed so Sonar/Codecov's own external
-      # checks (which don't have a "skip" concept) still run for real.
+      # checks (which have no "skip" concept) still run for real there.
       - name: SonarQube Cloud Scan
-        if: ${{ !cancelled() && secrets.SONAR_TOKEN != '' }}
+        if: ${{ !cancelled() && env.HAS_SONAR_TOKEN == 'true' }}
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       - name: Upload coverage to Codecov
-        if: ${{ !cancelled() && secrets.CODECOV_TOKEN != '' }}
+        if: ${{ !cancelled() && env.HAS_CODECOV_TOKEN == 'true' }}
         uses: codecov/codecov-action@5975040f7f7d40edaff8d784b576fd65ae95c073 # v5.5.5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: uploader/coverage.xml
           fail_ci_if_error: true
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() && secrets.CODECOV_TOKEN != '' }}
+        if: ${{ !cancelled() && env.HAS_CODECOV_TOKEN == 'true' }}
         uses: codecov/codecov-action@5975040f7f7d40edaff8d784b576fd65ae95c073 # v5.5.5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
