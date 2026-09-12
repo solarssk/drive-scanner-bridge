@@ -24,10 +24,16 @@ logger = logging.getLogger(__name__)
 
 _AUTH_SESSION_NAME = "SynologyDrive"
 _AUTH_ERROR_CODES = {105, 106, 107, 119}
+
+_API_AUTH = "SYNO.API.Auth"
+_API_FILES = "SYNO.SynologyDrive.Files"
+_API_TEAM_FOLDERS = "SYNO.SynologyDrive.TeamFolders"
+_CGI_ENTRY = "entry.cgi"
+
 _DEFAULT_API_VERSIONS = {
-    "SYNO.API.Auth": 6,
-    "SYNO.SynologyDrive.Files": 2,
-    "SYNO.SynologyDrive.TeamFolders": 1,
+    _API_AUTH: 6,
+    _API_FILES: 2,
+    _API_TEAM_FOLDERS: 1,
 }
 
 
@@ -192,7 +198,7 @@ class SynologyDriveClient:
             secret_fields["otp_code"] = self._otp_code
 
         data = self._call(
-            "POST", "auth.cgi", "SYNO.API.Auth", self._version_for("SYNO.API.Auth"), "login",
+            "POST", "auth.cgi", _API_AUTH, self._version_for(_API_AUTH), "login",
             data=secret_fields, auth_required=False,
         )
         self._sid = data["sid"]
@@ -203,7 +209,7 @@ class SynologyDriveClient:
             return
         try:
             self._call(
-                "GET", "auth.cgi", "SYNO.API.Auth", self._version_for("SYNO.API.Auth"), "logout",
+                "GET", "auth.cgi", _API_AUTH, self._version_for(_API_AUTH), "logout",
                 params={"session": _AUTH_SESSION_NAME}, auth_required=False,
             )
         except SynologyAPIError as exc:
@@ -213,8 +219,8 @@ class SynologyDriveClient:
 
     def list_team_folders(self) -> list[dict]:
         data = self._call(
-            "GET", "entry.cgi", "SYNO.SynologyDrive.TeamFolders",
-            self._version_for("SYNO.SynologyDrive.TeamFolders"), "list",
+            "GET", _CGI_ENTRY, _API_TEAM_FOLDERS,
+            self._version_for(_API_TEAM_FOLDERS), "list",
         )
         items = _extract_items(data)
         if not items and data:
@@ -223,8 +229,8 @@ class SynologyDriveClient:
 
     def list_folder(self, path: str) -> list[dict]:
         data = self._call(
-            "GET", "entry.cgi", "SYNO.SynologyDrive.Files",
-            self._version_for("SYNO.SynologyDrive.Files"), "list",
+            "GET", _CGI_ENTRY, _API_FILES,
+            self._version_for(_API_FILES), "list",
             params={"path": path, "offset": 0, "limit": 1000},
         )
         items = _extract_items(data)
@@ -249,8 +255,8 @@ class SynologyDriveClient:
         # supplied as just the folder.
         full_path = f"{dest_folder_path.rstrip('/')}/{filename}"
         data = self._call(
-            "POST", "entry.cgi", "SYNO.SynologyDrive.Files",
-            self._version_for("SYNO.SynologyDrive.Files"), "upload",
+            "POST", _CGI_ENTRY, _API_FILES,
+            self._version_for(_API_FILES), "upload",
             data={"path": full_path, "type": "file", "conflict_action": conflict_action},
             files={"file": (filename, fileobj)},
         )
@@ -264,7 +270,7 @@ class SynologyDriveClient:
         if match is None or "file_id" not in match:
             raise SynologyAPIError(f"could not find file_id for {path!r} to delete it")
         self._call(
-            "POST", "entry.cgi", "SYNO.SynologyDrive.Files",
-            self._version_for("SYNO.SynologyDrive.Files"), "delete",
+            "POST", _CGI_ENTRY, _API_FILES,
+            self._version_for(_API_FILES), "delete",
             data={"files": f'["{match["file_id"]}"]', "permanent": "true"},
         )

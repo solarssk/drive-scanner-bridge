@@ -24,6 +24,7 @@ again afterwards, or if the caller explicitly calls `forget()`.
 from __future__ import annotations
 
 import logging
+import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -46,7 +47,7 @@ class _Observation:
 def _is_candidate(entry: Path) -> bool:
     if not entry.is_file():
         return False
-    if entry.name.startswith(".") or entry.name.startswith("~"):
+    if entry.name.startswith((".", "~")):
         return False
     if entry.suffix.lower() in _IGNORED_SUFFIXES:
         return False
@@ -81,6 +82,34 @@ class StabilityTracker:
         upload) discovers the file is not actually usable after all."""
         self._observations.pop(path, None)
 
+    def _next_observation(self, entry: Path, stat: os.stat_result, now: float) -> tuple[_Observation, bool]:
+        """Decide whether `entry` should be reported as newly stable given
+        its latest stat(), returning (observation_to_keep, should_report)."""
+        previous = self._observations.get(entry)
+        unchanged = (
+            previous is not None
+            and previous.size == stat.st_size
+            and previous.mtime == stat.st_mtime
+        )
+
+        if unchanged and previous.reported:
+            return previous, False  # already reported stable and still untouched: nothing to do
+
+        if unchanged and (now - previous.last_checked_at) < self._stability_interval_seconds:
+            return previous, False  # too soon since the last check to count as a fresh one
+
+        if unchanged:
+            matches = previous.consecutive_matches + 1
+        else:
+            if previous is None:
+                logger.info("detected file %s", entry.name)
+            matches = 1
+
+        is_stable = matches >= self._stability_checks and _is_readable(entry)
+        if not is_stable:
+            logger.info("waiting for file stabilization %s", entry.name)
+        return _Observation(stat.st_size, stat.st_mtime, matches, now, reported=is_stable), is_stable
+
     def poll(self, incoming_dir: Path) -> list[Path]:
         try:
             entries = sorted(incoming_dir.iterdir())
@@ -104,39 +133,17 @@ class StabilityTracker:
             except OSError:
                 continue
 
-            previous = self._observations.get(entry)
-            unchanged = (
-                previous is not None
-                and previous.size == stat.st_size
-                and previous.mtime == stat.st_mtime
-            )
-
-            if unchanged and previous.reported:
-                continue  # already reported stable and still untouched: nothing to do
-
-            if unchanged and (now - previous.last_checked_at) < self._stability_interval_seconds:
-                continue  # unchanged, but too soon since the last check to count as a fresh one
-
-            if unchanged:
-                matches = previous.consecutive_matches + 1
-            else:
-                if previous is None:
-                    logger.info("detected file %s", entry.name)
-                matches = 1
-
-            if matches >= self._stability_checks and _is_readable(entry):
+            observation, is_stable = self._next_observation(entry, stat, now)
+            self._observations[entry] = observation
+            if is_stable:
                 stable.append(entry)
-                self._observations[entry] = _Observation(
-                    stat.st_size, stat.st_mtime, matches, now, reported=True
-                )
-            else:
-                logger.info("waiting for file stabilization %s", entry.name)
-                self._observations[entry] = _Observation(
-                    stat.st_size, stat.st_mtime, matches, now, reported=False
-                )
 
-        for tracked in list(self._observations):
-            if tracked not in seen:
-                self._observations.pop(tracked, None)
+        # Snapshot the keys to drop into their own list before popping --
+        # self._observations is mutated inside this loop, so iterating the
+        # dict itself here (even via a comprehension) would raise
+        # "dictionary changed size during iteration".
+        stale = [tracked for tracked in self._observations if tracked not in seen]
+        for tracked in stale:
+            self._observations.pop(tracked, None)
 
         return stable
