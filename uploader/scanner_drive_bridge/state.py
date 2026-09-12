@@ -29,6 +29,8 @@ STATE_PENDING = "pending"
 STATE_UPLOADING = "uploading"
 STATE_UPLOADED = "uploaded"
 
+_COUNT_BY_STATE_QUERY = "SELECT COUNT(*) FROM files WHERE state = ?"
+
 
 def hash_file(path: Path) -> tuple[str, int]:
     digest = hashlib.sha256()
@@ -166,18 +168,12 @@ class StateStore:
         return [self._to_record(row) for row in rows]
 
     def counts(self, now: Optional[float] = None) -> dict:
-        pending = self._conn.execute(
-            "SELECT COUNT(*) FROM files WHERE state = ?", (STATE_PENDING,)
-        ).fetchone()[0]
+        pending = self._conn.execute(_COUNT_BY_STATE_QUERY, (STATE_PENDING,)).fetchone()[0]
         failed = self._conn.execute(
             "SELECT COUNT(*) FROM files WHERE state = ? AND attempts > 0", (STATE_PENDING,)
         ).fetchone()[0]
-        uploading = self._conn.execute(
-            "SELECT COUNT(*) FROM files WHERE state = ?", (STATE_UPLOADING,)
-        ).fetchone()[0]
-        uploaded = self._conn.execute(
-            "SELECT COUNT(*) FROM files WHERE state = ?", (STATE_UPLOADED,)
-        ).fetchone()[0]
+        uploading = self._conn.execute(_COUNT_BY_STATE_QUERY, (STATE_UPLOADING,)).fetchone()[0]
+        uploaded = self._conn.execute(_COUNT_BY_STATE_QUERY, (STATE_UPLOADED,)).fetchone()[0]
         oldest_age = None
         row = self._conn.execute(
             "SELECT MIN(first_seen_at) FROM files WHERE state IN (?, ?)",
