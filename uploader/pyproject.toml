@@ -1,6 +1,6 @@
 [project]
 name = "scanner-drive-bridge"
-version = "0.2.0"
+version = "0.1.0"
 description = "Bridges a legacy SMB1 scanner inbox to Synology Drive via the Drive API, bypassing the Synology Drive filesystem-event bug."
 requires-python = ">=3.11"
 dependencies = [
