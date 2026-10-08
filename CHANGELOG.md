@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-08
+
+The container image is now published to ghcr.io. The runtime code is identical to 0.1.1.
+0.1.1 itself was published to ghcr.io by hand (a manual run of the workflow, which is why its
+`org.opencontainers.image.revision` label names the `main` commit of that run rather than the
+tag's commit); from this release on a pushed tag publishes the image automatically.
+
 ### Added
 
 - The uploader image is published to `ghcr.io/solarssk/drive-scanner-bridge` (`linux/amd64` and

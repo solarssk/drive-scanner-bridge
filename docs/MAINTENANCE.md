@@ -146,5 +146,6 @@ not just a YAML parser: GitHub rejects some expressions that are valid YAML.
 ## Roadmap
 
 - 0.1.1: stabilization of the current two-container setup (milestone `0.1.1`).
+- 0.1.2: the image is published to ghcr.io on release (milestone `0.1.2`).
 - 0.2.0: single container with an embedded SMB1 server, see
   [roadmap/0.2.0-single-container-smb1.md](roadmap/0.2.0-single-container-smb1.md).
