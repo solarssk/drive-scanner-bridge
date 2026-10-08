@@ -19,23 +19,24 @@ more Tier 3 machinery (DAST, SBOM, wiki) unless the scope actually grows.
 | 0 | Delete head branches on merge | done |
 | 0 | Branch protection, enforced for admins | done |
 | 1 | CI on push and PR (tests, image build, compose check) | done |
-| 1 | Lint step | open, #18 |
+| 1 | Lint step (ruff) and typecheck (mypy) | PR #24, issue #18 |
 | 1 | Actions pinned to commit SHA with version comment | done (see "Pinning actions") |
 | 1 | `permissions: contents: read` | done |
-| 1 | Dependencies pinned (base images by digest, Python deps) | open, #17 |
+| 1 | Base images pinned by digest | PR #23, issue #17 |
+| 1 | Python dependencies hash-locked | open, issue #26 |
 | 1 | SECURITY.md | done |
-| 1 | One structured issue template | open, #19 |
+| 1 | One structured issue template | PR #25, issue #19 |
 | 2 | Dependency audit (`pip-audit`) | done |
 | 2 | Secret scanning | done (GitHub native secret scanning + push protection) |
-| 2 | SAST (CodeQL) on PR and weekly | open, #18 |
-| 2 | Dependabot for every used ecosystem (pip, actions, docker) | open, #16 |
+| 2 | SAST (CodeQL) on PR and weekly | PR #24, issue #18 |
+| 2 | Dependabot for every used ecosystem (pip, actions, docker) | pip + actions done; docker open, issue #16 |
 | 2 | Container scan, blocking | done (CRITICAL blocks PRs, weekly CRITICAL+HIGH) |
-| 2 | `concurrency:` group in every workflow | open, #18 |
-| 2 | CONTRIBUTING.md, PR template, CODEOWNERS | PR template open, #19 |
-| 2 | Badge row (CI, release, license) | release badge open, #19 |
+| 2 | `concurrency:` group in every workflow | PR #24, issue #18 |
+| 2 | CONTRIBUTING.md, PR template, CODEOWNERS | PR template in PR #25 |
+| 2 | Badge row (CI, release, license) | release badge in PR #25 |
 | 3 | Coverage gate, quality gate | done (Codecov, SonarCloud) |
 
-Keep this table current when an item changes status.
+Statuses that name a PR become plain "done" once it merges. Keep this table current when an item changes status.
 
 ## Conventions
 
