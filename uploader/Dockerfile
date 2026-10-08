@@ -14,12 +14,18 @@ FROM gcr.io/distroless/python3-debian13:latest@sha256:0e48fa084c225991c3f4e13330
 FROM python:3.13-slim@sha256:bf44cdfcb76cd3b41e879bc058fc37ec5872002ccfde7fcb765e218cde0cd79c AS builder
 
 WORKDIR /build
+
+# Runtime dependencies first, from the hash-locked requirements.txt (generated from
+# requirements.in with pip-compile), so every build installs byte-identical packages
+# and a source change does not re-resolve them. --target installs flatly into /deps,
+# which is copied wholesale into the distroless stage (which has no pip).
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --target=/deps --require-hashes -r requirements.txt
+
+# Then the package itself, leaving the already-installed dependencies alone.
 COPY pyproject.toml ./
 COPY scanner_drive_bridge ./scanner_drive_bridge
-
-# --target installs our package and its dependencies flatly into /deps,
-# which is copied wholesale into the distroless stage (which has no pip).
-RUN pip install --no-cache-dir --target=/deps .
+RUN pip install --no-cache-dir --target=/deps --no-deps .
 
 # distroless only defines root/nobody/nonroot. Append an entry for
 # 1048:100 -- chosen to match the DSM user `prt01` and the smb1-printer
