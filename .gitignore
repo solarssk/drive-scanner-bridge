@@ -10,3 +10,4 @@ uploader/*.egg-info/
 uploader/coverage.xml
 uploader/.coverage
 .scannerwork/
+uploader/build/

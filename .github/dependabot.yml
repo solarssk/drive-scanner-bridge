@@ -18,3 +18,19 @@ updates:
       github-actions:
         patterns:
           - "*"
+
+  - package-ecosystem: "docker"
+    directory: "/uploader"
+    schedule:
+      interval: "weekly"
+    groups:
+      docker-base-images:
+        patterns:
+          - "*"
+    ignore:
+      # The builder's Python minor must match the one inside the distroless runtime
+      # image, so a minor or major jump is a deliberate change, not a weekly bump.
+      - dependency-name: "python"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
