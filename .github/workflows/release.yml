@@ -34,6 +34,7 @@ jobs:
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
+    timeout-minutes: 75
     permissions:
       contents: write # tag + release
       actions: write # dispatch release-image.yml
@@ -159,17 +160,47 @@ jobs:
           gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" --notes-file "$RUNNER_TEMP/release-notes.md"
           echo "Created release ${VERSION}."
 
-      # Always runs, also on a rerun after a partial failure; release-image.yml refuses to
-      # overwrite a tag that is already published, so repeating it is harmless.
-      - name: Publish the container image
+      # `gh workflow run` only starts the run and returns; it does not wait for it. So this step
+      # finds the run it just started (workflow_dispatch on the new tag, created after the
+      # dispatch) and waits for it to finish, and fails unless it succeeded. That keeps a failed
+      # build, scan or push from ending in a green release run and a closed milestone. Always
+      # runs, also on a rerun after a partial failure; release-image.yml refuses to overwrite a
+      # tag that is already published, so repeating it is harmless.
+      - name: Publish the container image and wait for it
         if: steps.bump.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.bump.outputs.version }}
         run: |
           set -euo pipefail
+          START="$(date -u -d '10 seconds ago' +%Y-%m-%dT%H:%M:%SZ)"
           gh workflow run release-image.yml --ref "$VERSION" -f version="$VERSION" -f publish=true
-          echo "Started release-image.yml for ${VERSION}."
+          RUN_ID=""
+          for _ in $(seq 1 45); do
+            RUN_ID="$(gh run list --workflow release-image.yml --event workflow_dispatch --branch "$VERSION" --limit 10 \
+              --json databaseId,createdAt \
+              --jq "[.[] | select(.createdAt >= \"${START}\")] | sort_by(.createdAt) | .[0].databaseId // empty")"
+            [ -n "$RUN_ID" ] && break
+            sleep 4
+          done
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::Dispatched release-image.yml for ${VERSION} but could not find its run." >&2
+            exit 1
+          fi
+          URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
+          echo "Waiting for the image run: ${URL}"
+          STATUS=""
+          CONCLUSION=""
+          for _ in $(seq 1 240); do
+            read -r STATUS CONCLUSION < <(gh run view "$RUN_ID" --json status,conclusion --jq '"\(.status) \(.conclusion)"')
+            [ "$STATUS" = "completed" ] && break
+            sleep 15
+          done
+          if [ "$STATUS" != "completed" ] || [ "$CONCLUSION" != "success" ]; then
+            echo "::error::The image run for ${VERSION} did not succeed (status=${STATUS}, conclusion=${CONCLUSION}): ${URL}. The tag and Release exist, but the image does not; fix the cause, run 'Publish image' by hand for ${VERSION}, then close the milestone." >&2
+            exit 1
+          fi
+          echo "Image published: ${URL}"
 
       - name: Close the matching milestone
         if: steps.bump.outputs.skip != 'true'

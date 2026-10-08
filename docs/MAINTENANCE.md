@@ -75,10 +75,16 @@ container image on ghcr.io (`ghcr.io/solarssk/drive-scanner-bridge:<version>`, `
    push and, if it moved: checks that `__version__`, the compose image tag and the CHANGELOG
    heading all agree (a mismatch fails the run and releases nothing), creates the tag
    `x.y.z` on the merge commit and the GitHub Release (notes from the CHANGELOG via
-   `scripts/format_release_notes.py`), dispatches `Publish image`, and closes the milestone.
+   `scripts/format_release_notes.py`), dispatches `Publish image`, **waits for that run to
+   finish**, and only if it succeeded closes the milestone.
 6. `Publish image` builds each platform, scans each one (CRITICAL or HIGH with a fix blocks)
-   and only then pushes. Check both runs and that the tag appears under
+   and only then pushes. Check that the `Release` run is green and that the tag appears under
    `github.com/solarssk?tab=packages`.
+
+If the image run fails (a scan finding with a fix, a build error), the `Release` run goes red
+and the milestone stays open. The tag and the GitHub Release already exist at that point but
+the image does not. Fix the cause, run `Publish image` by hand for that version (a failed run
+publishes nothing, so it is not blocked as "already published"), then close the milestone.
 
 Recovery and manual use:
 
