@@ -19,21 +19,21 @@ more Tier 3 machinery (DAST, SBOM, wiki) unless the scope actually grows.
 | 0 | Delete head branches on merge | done |
 | 0 | Branch protection, enforced for admins | done |
 | 1 | CI on push and PR (tests, image build, compose check) | done |
-| 1 | Lint step (ruff) and typecheck (mypy) | PR #24, issue #18 |
+| 1 | Lint step (ruff) and typecheck (mypy) | done |
 | 1 | Actions pinned to commit SHA with version comment | done (see "Pinning actions") |
 | 1 | `permissions: contents: read` | done |
-| 1 | Base images pinned by digest | PR #23, issue #17 |
-| 1 | Python dependencies hash-locked | open, issue #26 |
+| 1 | Base images pinned by digest | done |
+| 1 | Python dependencies hash-locked | done (`requirements.txt`) |
 | 1 | SECURITY.md | done |
-| 1 | One structured issue template | PR #25, issue #19 |
+| 1 | One structured issue template | done |
 | 2 | Dependency audit (`pip-audit`) | done |
 | 2 | Secret scanning | done (GitHub native secret scanning + push protection) |
-| 2 | SAST (CodeQL) on PR and weekly | PR #24, issue #18 |
-| 2 | Dependabot for every used ecosystem (pip, actions, docker) | pip + actions done; docker open, issue #16 |
+| 2 | SAST (CodeQL) on PR and weekly | done |
+| 2 | Dependabot for every used ecosystem (pip, actions, docker) | done (pip, github-actions, docker) |
 | 2 | Container scan, blocking | done (CRITICAL blocks PRs, weekly CRITICAL+HIGH) |
-| 2 | `concurrency:` group in every workflow | PR #24, issue #18 |
-| 2 | CONTRIBUTING.md, PR template, CODEOWNERS | PR template in PR #25 |
-| 2 | Badge row (CI, release, license) | release badge in PR #25 |
+| 2 | `concurrency:` group in every workflow | done |
+| 2 | CONTRIBUTING.md, PR template, CODEOWNERS | done |
+| 2 | Badge row (CI, release, license) | done |
 | 3 | Coverage gate, quality gate | done (Codecov, SonarCloud) |
 
 Statuses that name a PR become plain "done" once it merges. Keep this table current when an item changes status.
@@ -83,6 +83,23 @@ snapshot) and an image tag for local `docker build`.
   close the Dependabot PRs. Verify every new SHA first (next section).
 - `if:` conditions cannot read `secrets.*`. Route the check through a job-level `env:`
   value, as the `code-quality` job does.
+
+## Python dependencies
+
+Runtime dependencies are hash-locked: `uploader/requirements.in` is the input and
+`uploader/requirements.txt` the generated output (the Dockerfile and CI install it with
+`--require-hashes`). Dependabot's `pip` ecosystem keeps both current. To regenerate by hand,
+with Python 3.13:
+
+```bash
+cd uploader && pip-compile --generate-hashes --strip-extras -o requirements.txt requirements.in
+```
+
+Keep `requirements.in` in sync with `[project].dependencies` in `pyproject.toml`. CI enforces
+it: the last step of the `Unit tests` job installs the lock plus the package with `--no-deps`
+(as the Dockerfile does) in a throwaway venv and runs `pip check`, which fails if
+`pyproject.toml` declares a dependency the lock does not contain. Dev tools
+(ruff, mypy, pytest) are version ranges on purpose: they do not ship in the image.
 
 ## Pinning actions
 

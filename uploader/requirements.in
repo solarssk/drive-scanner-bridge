@@ -1,0 +1,3 @@
+# Runtime dependencies of the bridge. Keep in sync with [project].dependencies in
+# pyproject.toml. requirements.txt is generated from this file; do not edit it by hand.
+requests>=2.31,<3
