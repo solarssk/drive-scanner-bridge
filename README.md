@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/solarssk/drive-scanner-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/solarssk/drive-scanner-bridge/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/solarssk/drive-scanner-bridge)](https://github.com/solarssk/drive-scanner-bridge/releases)
 
 Bridges a legacy SMB1 network scanner to Synology Drive, bypassing a
 Synology Drive bug where filesystem events are not reliably consumed.
