@@ -26,7 +26,7 @@ body:
     id: version
     attributes:
       label: Version
-      description: The image tag from docker-compose.yml (for example 0.1.0)
+      description: The image tag from docker-compose.yml (for example 0.1.1)
     validations:
       required: true
   - type: dropdown
