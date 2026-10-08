@@ -57,18 +57,16 @@ services:
       - "-r"
 
   drive-uploader:
-    # No `build:` here on purpose: Portainer attempts to build whenever a
-    # service has a `build:` section, regardless of whether a matching
-    # `image:` already exists locally -- and its own container generally
-    # can't read host paths like /volume1/..., so that build always fails
-    # with "Cannot locate specified Dockerfile". Build the image
-    # separately instead (Portainer -> Images -> Build a new image ->
-    # Upload a tar of uploader/'s contents, or `docker build -t <tag>
-    # ./uploader` over SSH/locally), then this file only ever *runs* it.
-    # See README "Deploying via Portainer". Bump this tag on every rebuild
-    # (see README "Upgrading") so there is never ambiguity about whether a
-    # redeploy picked up new image content.
-    image: scanner-drive-bridge-uploader:0.1.1
+    # Pulled from ghcr.io; .github/workflows/release-image.yml publishes it when a
+    # release is tagged. No `build:` here on purpose: Portainer attempts to build
+    # whenever a service has a `build:` section, and its own container generally
+    # can't read host paths like /volume1/..., so that build fails with "Cannot
+    # locate specified Dockerfile". To run a local build instead, build it under
+    # this same name (`docker build -t ghcr.io/solarssk/drive-scanner-bridge:<tag> ./uploader`, or Portainer ->
+    # Images -> Build a new image -> Upload). Bump the tag on every release (see
+    # README "Upgrading") so there is never ambiguity about which image a redeploy
+    # picked up.
+    image: ghcr.io/solarssk/drive-scanner-bridge:0.1.1
     container_name: drive-uploader
     restart: unless-stopped
     depends_on:
