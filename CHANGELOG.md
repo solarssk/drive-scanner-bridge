@@ -6,14 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Changed
-
-- Runtime base image moved from `distroless/python3-debian12` to `python3-debian13`
-  and the builder from `python:3.11-slim` to `python:3.13-slim`; both are now pinned
-  by digest. The weekly image scan had been red since 2026-09-14 (25 fixable HIGH
-  findings that the debian12 image never picked up); on debian13 it scans clean.
-- Python floor is now 3.13 (`requires-python`, CI, Sonar), matching what ships.
-
 ## [0.1.0] - 2026-09-09
 
 First tagged release. Nothing was ever formally released before this --
