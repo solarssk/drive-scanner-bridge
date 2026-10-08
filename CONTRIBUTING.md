@@ -29,3 +29,6 @@ and PRs readable months later:
 For anything touching credential handling, DSM authentication, or the
 SMB1/Samba legacy-auth settings, see [SECURITY.md](SECURITY.md) instead of
 opening a public issue or PR discussion.
+
+Maintenance conventions, the release process and the playbook checklist are in
+[docs/MAINTENANCE.md](docs/MAINTENANCE.md). The roadmap is in [docs/roadmap/](docs/roadmap/).
