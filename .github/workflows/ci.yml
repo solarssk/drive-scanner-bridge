@@ -44,6 +44,17 @@ jobs:
             uploader/coverage.xml
             uploader/junit.xml
           retention-days: 7
+      # Reproduces what the Dockerfile does (hash-locked deps, then the package with
+      # --no-deps) in a throwaway venv. The editable install above resolves anything
+      # missing from requirements.txt by itself, so without this a dependency added to
+      # pyproject.toml but not to requirements.in would pass the tests and then be
+      # absent from the production image. `pip check` fails on exactly that.
+      - name: Check requirements.txt covers the package's dependencies, as the Docker build installs them
+        run: |
+          python -m venv "$RUNNER_TEMP/lockcheck"
+          "$RUNNER_TEMP/lockcheck/bin/pip" install --require-hashes --only-binary=:all: -r requirements.txt
+          "$RUNNER_TEMP/lockcheck/bin/pip" install --no-deps .
+          "$RUNNER_TEMP/lockcheck/bin/pip" check
 
   code-quality:
     name: Code quality (Sonar + Codecov)

@@ -95,7 +95,10 @@ with Python 3.13:
 cd uploader && pip-compile --generate-hashes --strip-extras -o requirements.txt requirements.in
 ```
 
-Keep `requirements.in` in sync with `[project].dependencies` in `pyproject.toml`. Dev tools
+Keep `requirements.in` in sync with `[project].dependencies` in `pyproject.toml`. CI enforces
+it: the last step of the `Unit tests` job installs the lock plus the package with `--no-deps`
+(as the Dockerfile does) in a throwaway venv and runs `pip check`, which fails if
+`pyproject.toml` declares a dependency the lock does not contain. Dev tools
 (ruff, mypy, pytest) are version ranges on purpose: they do not ship in the image.
 
 ## Pinning actions
