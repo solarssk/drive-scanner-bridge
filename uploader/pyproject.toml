@@ -11,6 +11,9 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
+    "ruff>=0.16",
+    "mypy>=2.4",
+    "types-requests>=2.33",
 ]
 
 [build-system]
@@ -19,3 +22,12 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["scanner_drive_bridge*"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+
+[tool.mypy]
+files = ["scanner_drive_bridge"]
