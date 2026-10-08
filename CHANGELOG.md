@@ -20,7 +20,8 @@ bridge itself; the changes are the runtime base, dependency pinning, CI and gove
   3.13 (`requires-python`, CI, Sonar), matching what ships.
 - Runtime dependencies are hash-locked: `uploader/requirements.in` and the generated
   `requirements.txt`. The Docker build installs them with `--require-hashes`, and CI
-  installs the same lock before running tests.
+  installs the same lock before running tests and checks, with `pip check` against a
+  Docker-style `--no-deps` install, that the lock covers everything `pyproject.toml` declares.
 - Dependabot groups updates (one PR per ecosystem per week) and now also covers the
   Docker base images. Python minor/major jumps of the builder image are ignored on purpose.
 - GitHub Actions bumped: `docker/build-push-action` 7.4.0, `docker/setup-buildx-action`
