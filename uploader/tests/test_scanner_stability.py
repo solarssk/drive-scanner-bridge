@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from scanner_drive_bridge.scanner import StabilityTracker, _is_readable
 
 

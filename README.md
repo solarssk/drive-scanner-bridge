@@ -383,12 +383,12 @@ base-OS package CVEs (glibc, systemd, coreutils, `perl-base`, etc.), almost
 none of it reachable here (no shell exposed, no untrusted local multi-user
 input, no exposed port). Rather than accept that as "good enough given the
 threat model", the Dockerfile is now a multi-stage build: dependencies are
-installed in a `python:3.11-slim` builder stage, and the final image is
-[Google's distroless `python3-debian12`](https://github.com/GoogleContainerTools/distroless)
-base, which ships nothing beyond the Python 3.11 runtime itself -- no
+installed in a `python:3.13-slim` builder stage, and the final image is
+[Google's distroless `python3-debian13`](https://github.com/GoogleContainerTools/distroless)
+base, which ships nothing beyond the Python 3.13 runtime itself -- no
 shell, no package manager, no coreutils, no `perl`. That takes the scan to
 **0 Critical / 0 High / 0 Medium / 0 Low**, and the image shrank from ~46 MB
-to ~20 MB. The builder stage deliberately matches distroless's Python 3.11
+to ~20 MB. The builder stage deliberately matches distroless's Python 3.13
 so `charset_normalizer`'s compiled extension (a `requests` transitive
 dependency) stays ABI-compatible instead of silently falling back to its
 pure-Python path. `pip-audit` against the actual application dependencies
@@ -405,7 +405,7 @@ docker scout cves scanner-drive-bridge-uploader:0.1.0
 
 The 0/0/0/0 result above reflects the state at the time the distroless
 migration was made, not a permanent guarantee -- new CVEs get published
-against already-released package versions, and `distroless/python3-debian12`
+against already-released package versions, and `distroless/python3-debian13`
 carries whatever OS-level shared libraries (glibc, libssl, libsqlite3,
 zlib, etc.) Python's own stdlib links against, each with its own CVE
 history. This is now checked continuously instead of manually: `ci.yml`'s
@@ -415,6 +415,13 @@ picture weekly (same cadence as Dependabot) without blocking merges --
 HIGH findings in OS packages often trail Google's own distroless rebuild
 cadence by days, so gating every PR on them would block unrelated work for
 something no code change here can fix.
+
+Both base images are pinned by digest in `uploader/Dockerfile`, so a base-image
+change is always a reviewable pull request rather than a silent `:latest` drift.
+The base moved from `python3-debian12` to `python3-debian13` in 0.1.1: the
+debian12 image had not picked up Debian's fixes for weeks (25 fixable HIGH
+findings in libexpat1, krb5, libpython3.11 and libssl3, red in the weekly scan
+from 2026-09-14), while the debian13 image scanned clean.
 
 ## Scanner flow (unchanged)
 

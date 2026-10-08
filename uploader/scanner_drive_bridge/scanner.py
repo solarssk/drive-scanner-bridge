@@ -86,19 +86,11 @@ class StabilityTracker:
         """Decide whether `entry` should be reported as newly stable given
         its latest stat(), returning (observation_to_keep, should_report)."""
         previous = self._observations.get(entry)
-        unchanged = (
-            previous is not None
-            and previous.size == stat.st_size
-            and previous.mtime == stat.st_mtime
-        )
-
-        if unchanged and previous.reported:
-            return previous, False  # already reported stable and still untouched: nothing to do
-
-        if unchanged and (now - previous.last_checked_at) < self._stability_interval_seconds:
-            return previous, False  # too soon since the last check to count as a fresh one
-
-        if unchanged:
+        if previous is not None and previous.size == stat.st_size and previous.mtime == stat.st_mtime:
+            if previous.reported:
+                return previous, False  # already reported stable and still untouched: nothing to do
+            if (now - previous.last_checked_at) < self._stability_interval_seconds:
+                return previous, False  # too soon since the last check to count as a fresh one
             matches = previous.consecutive_matches + 1
         else:
             if previous is None:

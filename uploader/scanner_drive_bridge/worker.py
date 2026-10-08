@@ -181,7 +181,10 @@ class Worker:
             self._cleanup_expired_local_copies()
 
     def _cleanup_expired_local_copies(self) -> None:
-        cutoff = self._clock() - self._config.local_retention_hours * 3600
+        retention_hours = self._config.local_retention_hours
+        if retention_hours is None:
+            return
+        cutoff = self._clock() - retention_hours * 3600
         try:
             expired = self._state.uploaded_before(cutoff)
         except Exception:  # noqa: BLE001
@@ -194,7 +197,7 @@ class Worker:
             self._safe_remove(path)
             logger.info(
                 "removed local copy past retention window (%.1fh) file=%s",
-                self._config.local_retention_hours, record.original_name,
+                retention_hours, record.original_name,
             )
 
     # -- per-file handling ---------------------------------------------------
