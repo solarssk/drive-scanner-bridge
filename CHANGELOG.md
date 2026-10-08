@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- GitHub Actions bumped: `docker/build-push-action` 7.4.0, `docker/setup-buildx-action`
+  4.4.1, `SonarSource/sonarqube-scan-action` 8.2.2.
+- Dependabot now groups updates, one PR per ecosystem per week.
+
+### Fixed
+
+- `aquasecurity/trivy-action` and `codecov/codecov-action` were pinned to the SHA of
+  the annotated tag *object*; they now pin the tag's commit SHA.
+
 ## [0.1.0] - 2026-09-09
 
 First tagged release. Nothing was ever formally released before this --
