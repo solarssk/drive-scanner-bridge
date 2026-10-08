@@ -1,10 +1,17 @@
 name: Publish image
 
-# Publishes the uploader image to ghcr.io when a release tag (x.y.z) is pushed.
-# A manual run can publish a version that was tagged before this workflow existed,
-# or just dry-run it (publish: false). Pull requests that touch this workflow, the
-# Dockerfile or the dependency lock only dry-run: both platforms are built and scanned,
-# but nothing logs in or pushes.
+# The title carries the request id when release.yml dispatches this workflow, so that run can
+# be found unambiguously (no other run can have that id in its title).
+run-name: Publish image ${{ inputs.version || github.head_ref || github.ref_name }}${{ inputs.request_id && format(' [{0}]', inputs.request_id) || '' }}
+
+# Publishes the uploader image to ghcr.io. release.yml dispatches it on the new tag when a
+# release PR merges; that is the normal path. A manual run (version + publish) publishes or
+# dry-runs a version by hand, and a release tag (x.y.z) pushed by hand also publishes, as a
+# fallback. Pull requests that touch this workflow, the Dockerfile or the dependency lock
+# only dry-run: both platforms are built and scanned, but nothing logs in or pushes.
+#
+# A published version tag is immutable: if ghcr.io already has it, nothing is rebuilt or
+# pushed, so a retried run can never change the digest someone has already deployed.
 on:
   push:
     tags: ["[0-9]+.[0-9]+.[0-9]+"]
@@ -24,6 +31,11 @@ on:
         required: true
         type: boolean
         default: false
+      request_id:
+        description: "Set by release.yml so it can find this exact run; leave empty by hand"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -88,6 +100,28 @@ jobs:
           images: ${{ env.IMAGE }}
           tags: type=raw,value=${{ steps.v.outputs.version }}
 
+      # Fails closed: only the registry's own "not found" answer counts as "not published";
+      # any other error stops the run instead of risking an overwrite.
+      - name: Is this version already published?
+        id: published
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          set -uo pipefail
+          if OUT="$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" 2>&1)"; then
+            echo "already=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${IMAGE}:${VERSION} is already published; release tags are immutable, leaving it untouched."
+          elif printf '%s' "$OUT" | grep -qiE 'not found|manifest unknown|no such manifest'; then
+            echo "already=false" >> "$GITHUB_OUTPUT"
+          elif [ "$PUBLISH" = "true" ]; then
+            echo "::error::Could not tell whether ${IMAGE}:${VERSION} is already published: ${OUT}" >&2
+            exit 1
+          else
+            # A dry run pushes nothing, so an inconclusive lookup must not fail it.
+            echo "::warning::Could not tell whether ${IMAGE}:${VERSION} is already published (dry run, continuing): ${OUT}"
+            echo "already=false" >> "$GITHUB_OUTPUT"
+          fi
+
       # Scan what will be published BEFORE pushing it, and scan EACH platform: the arm64
       # variant has its own base-image layers and its own architecture-specific wheels, so a
       # clean amd64 scan says nothing about it. Every platform is built into the local store
@@ -95,6 +129,7 @@ jobs:
       # Each platform keeps its own cache scope, so the push step below reuses the very
       # layers that were scanned instead of rebuilding them.
       - name: Build linux/amd64 for the pre-push scan
+        if: steps.published.outputs.already != 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ./uploader
@@ -108,6 +143,7 @@ jobs:
           cache-to: type=gha,scope=release-image-amd64,mode=max
 
       - name: Scan linux/amd64 (CRITICAL and HIGH with a fix block publishing)
+        if: steps.published.outputs.already != 'true'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ env.IMAGE }}:scan-amd64
@@ -117,6 +153,7 @@ jobs:
           exit-code: "1"
 
       - name: Build linux/arm64 for the pre-push scan
+        if: steps.published.outputs.already != 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ./uploader
@@ -130,6 +167,7 @@ jobs:
           cache-to: type=gha,scope=release-image-arm64,mode=max
 
       - name: Scan linux/arm64 (CRITICAL and HIGH with a fix block publishing)
+        if: steps.published.outputs.already != 'true'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ env.IMAGE }}:scan-arm64
@@ -142,6 +180,7 @@ jobs:
       # (no extra attestation entries that older Docker/registry UIs show as "unknown").
       - name: Build both platforms and push
         id: push
+        if: steps.published.outputs.already != 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ./uploader
@@ -158,8 +197,11 @@ jobs:
         env:
           TAGS: ${{ steps.meta.outputs.tags }}
           DIGEST: ${{ steps.push.outputs.digest }}
+          ALREADY: ${{ steps.published.outputs.already }}
         run: |
-          if [ "$PUBLISH" = "true" ]; then
+          if [ "$ALREADY" = "true" ]; then
+            echo "Already published, nothing rebuilt or pushed: \`$TAGS\`" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$PUBLISH" = "true" ]; then
             echo "Published \`$TAGS\` (digest \`$DIGEST\`)" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Dry run: \`$TAGS\` built for linux/amd64 and linux/arm64 and scanned, nothing pushed" >> "$GITHUB_STEP_SUMMARY"

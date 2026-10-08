@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Releases are automatic. Merging a release PR to `main` (version bumped, matching
+  `## [X.Y.Z] - date` CHANGELOG entry) now creates the git tag and the GitHub Release (notes
+  built from the CHANGELOG by `scripts/format_release_notes.py`), publishes the image and closes
+  the milestone, but only after the image run it dispatched has finished successfully
+  (`release.yml`; a manual run on the same version cannot be mistaken for it). A version
+  that disagrees between `pyproject.toml`, `__version__`, the compose image tag and the CHANGELOG
+  fails the run and releases nothing.
+
+### Changed
+
+- `Publish image` never overwrites a version that is already on ghcr.io, so a retried run cannot
+  change the digest someone has deployed.
+
 ## [0.1.2] - 2026-10-08
 
 The container image is now published to ghcr.io. The runtime code is identical to 0.1.1.

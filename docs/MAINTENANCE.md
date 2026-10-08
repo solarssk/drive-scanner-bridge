@@ -32,6 +32,7 @@ more Tier 3 machinery (DAST, SBOM, wiki) unless the scope actually grows.
 | 2 | Dependabot for every used ecosystem (pip, actions, docker) | done (pip, github-actions, docker) |
 | 2 | Container scan, blocking | done (CRITICAL blocks PRs, weekly CRITICAL+HIGH, both platforms of the published image are scanned before push) |
 | 2 | `concurrency:` group in every workflow | done |
+| 2 | Release automation (tag, GitHub Release, image, milestone on merge) | done (`release.yml`) |
 | 2 | CONTRIBUTING.md, PR template, CODEOWNERS | done |
 | 2 | Badge row (CI, release, license) | done |
 | 3 | Coverage gate, quality gate | done (Codecov, SonarCloud) |
@@ -59,24 +60,44 @@ change or every PR will wait forever for a check that no longer exists.
 
 ## Release process
 
-A release is a git tag + GitHub Release and a container image on ghcr.io
-(`ghcr.io/solarssk/drive-scanner-bridge:<version>`, `linux/amd64` + `linux/arm64`). Pushing the tag runs
-`.github/workflows/release-image.yml`: it builds each platform, scans each one (CRITICAL or
-HIGH with a fix blocks), and only then pushes.
+Merging a release PR **is** the release. A release is a git tag, a GitHub Release and a
+container image on ghcr.io (`ghcr.io/solarssk/drive-scanner-bridge:<version>`, `linux/amd64` +
+`linux/arm64`); `.github/workflows/release.yml` creates all of it, you only prepare the PR:
 
-1. Close or move every issue in the milestone.
-2. Bump the version everywhere: `uploader/pyproject.toml`,
-   `uploader/scanner_drive_bridge/__init__.py`, the `image:` tag in `docker-compose.yml`,
-   and the README references (`grep -rn "<old version>"`).
-3. `CHANGELOG.md`: turn `[Unreleased]` into `[x.y.z] - <date>`, add a fresh empty
-   `[Unreleased]`.
-4. Open a `release/x.y.z` PR; the owner merges it once CI is green on `main`.
-5. Tag the merge commit (annotated, no `v` prefix, matching the image tag), publish the
-   GitHub Release with the CHANGELOG section as notes, close the milestone.
-6. Check the `Publish image` run and that the new tag appears under
-   `github.com/solarssk?tab=packages`. A version that was tagged before the workflow
-   existed is published by hand: Actions -> Publish image -> Run workflow, with that
-   version and `publish` ticked.
+1. Close or move every issue in the milestone (named exactly like the version, e.g. `0.1.3`).
+2. Bump the version everywhere it is written: `uploader/pyproject.toml`,
+   `uploader/scanner_drive_bridge/__init__.py`, the `image:` tag in `docker-compose.yml`, and
+   the README references (`grep -rn "<old version>"`).
+3. `CHANGELOG.md`: turn `[Unreleased]` into `## [x.y.z] - YYYY-MM-DD` (that exact heading
+   format; the release notes are built from it) and add a fresh empty `[Unreleased]`.
+4. Open a `release/x.y.z` PR. The owner merges it once CI is green.
+5. On the merge to `main` the `Release` workflow compares the version before and after the
+   push and, if it moved: checks that `__version__`, the compose image tag and the CHANGELOG
+   heading all agree (a mismatch fails the run and releases nothing), creates the tag
+   `x.y.z` on the merge commit and the GitHub Release (notes from the CHANGELOG via
+   `scripts/format_release_notes.py`), dispatches `Publish image`, **waits for that run to
+   finish**, and only if it succeeded closes the milestone. It waits for the exact run it
+   dispatched (the run URL `gh` returns, or else a request id in the run's title), so a manual
+   `Publish image` run on the same version can never be mistaken for it.
+6. `Publish image` builds each platform, scans each one (CRITICAL or HIGH with a fix blocks)
+   and only then pushes. Check that the `Release` run is green and that the tag appears under
+   `github.com/solarssk?tab=packages`.
+
+If the image run fails (a scan finding with a fix, a build error), the `Release` run goes red
+and the milestone stays open. The tag and the GitHub Release already exist at that point but
+the image does not. Fix the cause, run `Publish image` by hand for that version (a failed run
+publishes nothing, so it is not blocked as "already published"), then close the milestone.
+
+Recovery and manual use:
+
+- `Release` can be run by hand (Actions -> Release -> Run workflow). It repeats the steps
+  for the version currently in `pyproject.toml`; each step is safe to repeat. It only works
+  while `main` is still at the release commit: a tag that sits on a different commit fails
+  the run on purpose, rather than attaching a release to the wrong code.
+- `Publish image` can be run by hand with a version and `publish` ticked, for a tag that
+  exists but has no image. It never overwrites a version that is already on ghcr.io.
+- Do not push release tags by hand: the automation owns them. A hand-pushed tag still
+  publishes an image (fallback) but gets no Release and no milestone closing.
 
 ### Container registry (ghcr.io)
 
@@ -86,6 +107,7 @@ HIGH with a fix blocks), and only then pushes.
 - The image carries the `org.opencontainers.image.source` label (set by the workflow), which
   links the package to this repository.
 - Only exact version tags are published, no `latest`, so a deployment never moves by itself.
+  A published tag is immutable: `Publish image` leaves a version that is already on ghcr.io untouched.
 - A pull request that touches the workflow, the Dockerfile or `requirements.txt` runs the
   same pipeline as a dry run: both platforms are built and scanned, nothing is pushed.
 
