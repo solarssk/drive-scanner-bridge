@@ -30,7 +30,7 @@ more Tier 3 machinery (DAST, SBOM, wiki) unless the scope actually grows.
 | 2 | Secret scanning | done (GitHub native secret scanning + push protection) |
 | 2 | SAST (CodeQL) on PR and weekly | done |
 | 2 | Dependabot for every used ecosystem (pip, actions, docker) | done (pip, github-actions, docker) |
-| 2 | Container scan, blocking | done (CRITICAL blocks PRs, weekly CRITICAL+HIGH, the published image is scanned before push) |
+| 2 | Container scan, blocking | done (CRITICAL blocks PRs, weekly CRITICAL+HIGH, both platforms of the published image are scanned before push) |
 | 2 | `concurrency:` group in every workflow | done |
 | 2 | CONTRIBUTING.md, PR template, CODEOWNERS | done |
 | 2 | Badge row (CI, release, license) | done |
@@ -61,8 +61,8 @@ change or every PR will wait forever for a check that no longer exists.
 
 A release is a git tag + GitHub Release and a container image on ghcr.io
 (`ghcr.io/solarssk/drive-scanner-bridge:<version>`, `linux/amd64` + `linux/arm64`). Pushing the tag runs
-`.github/workflows/release-image.yml`: it builds, scans (CRITICAL or HIGH with a fix
-blocks), and only then pushes.
+`.github/workflows/release-image.yml`: it builds each platform, scans each one (CRITICAL or
+HIGH with a fix blocks), and only then pushes.
 
 1. Close or move every issue in the milestone.
 2. Bump the version everywhere: `uploader/pyproject.toml`,

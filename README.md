@@ -422,7 +422,8 @@ something no code change here can fix.
 Both base images are pinned by digest in `uploader/Dockerfile`, so a base-image
 change is always a reviewable pull request rather than a silent `:latest` drift.
 The image that is published to ghcr.io on a release is scanned **before** it is
-pushed, and any CRITICAL or HIGH finding with a fix stops the publish.
+pushed, for both `amd64` and `arm64`, and any CRITICAL or HIGH finding with a fix
+stops the publish.
 The base moved from `python3-debian12` to `python3-debian13` in 0.1.1: the
 debian12 image had not picked up Debian's fixes for weeks (25 fixable HIGH
 findings in libexpat1, krb5, libpython3.11 and libssl3, red in the weekly scan

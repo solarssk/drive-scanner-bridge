@@ -9,8 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - The uploader image is published to `ghcr.io/solarssk/drive-scanner-bridge` (`linux/amd64` and
-  `linux/arm64`) when a release tag is pushed, after a Trivy scan that blocks on any
-  CRITICAL or HIGH finding with a fix (`release-image.yml`).
+  `linux/arm64`) when a release tag is pushed, after a Trivy scan of each platform that
+  blocks on any CRITICAL or HIGH finding with a fix (`release-image.yml`).
 
 ### Changed
 

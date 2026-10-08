@@ -3,8 +3,8 @@ name: Publish image
 # Publishes the uploader image to ghcr.io when a release tag (x.y.z) is pushed.
 # A manual run can publish a version that was tagged before this workflow existed,
 # or just dry-run it (publish: false). Pull requests that touch this workflow, the
-# Dockerfile or the dependency lock only dry-run: both platforms are built and the
-# image is scanned, but nothing logs in or pushes.
+# Dockerfile or the dependency lock only dry-run: both platforms are built and scanned,
+# but nothing logs in or pushes.
 on:
   push:
     tags: ["[0-9]+.[0-9]+.[0-9]+"]
@@ -88,25 +88,51 @@ jobs:
           images: ${{ env.IMAGE }}
           tags: type=raw,value=${{ steps.v.outputs.version }}
 
-      # Scan what will be published BEFORE pushing it: build the amd64 image into the
-      # local store first and let a CRITICAL or HIGH finding with a fix stop the run.
-      - name: Build amd64 image for the pre-push scan
+      # Scan what will be published BEFORE pushing it, and scan EACH platform: the arm64
+      # variant has its own base-image layers and its own architecture-specific wheels, so a
+      # clean amd64 scan says nothing about it. Every platform is built into the local store
+      # and scanned; a CRITICAL or HIGH finding with a fix stops the run before any push.
+      # Each platform keeps its own cache scope, so the push step below reuses the very
+      # layers that were scanned instead of rebuilding them.
+      - name: Build linux/amd64 for the pre-push scan
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ./uploader
           platforms: linux/amd64
           load: true
           push: false
-          tags: ${{ env.IMAGE }}:scan
+          tags: ${{ env.IMAGE }}:scan-amd64
           labels: ${{ steps.meta.outputs.labels }}
           provenance: false
-          cache-from: type=gha,scope=release-image
-          cache-to: type=gha,scope=release-image,mode=max
+          cache-from: type=gha,scope=release-image-amd64
+          cache-to: type=gha,scope=release-image-amd64,mode=max
 
-      - name: Scan the image (CRITICAL and HIGH with a fix block publishing)
+      - name: Scan linux/amd64 (CRITICAL and HIGH with a fix block publishing)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ${{ env.IMAGE }}:scan
+          image-ref: ${{ env.IMAGE }}:scan-amd64
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Build linux/arm64 for the pre-push scan
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ./uploader
+          platforms: linux/arm64
+          load: true
+          push: false
+          tags: ${{ env.IMAGE }}:scan-arm64
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: false
+          cache-from: type=gha,scope=release-image-arm64
+          cache-to: type=gha,scope=release-image-arm64,mode=max
+
+      - name: Scan linux/arm64 (CRITICAL and HIGH with a fix block publishing)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}:scan-arm64
           format: table
           severity: CRITICAL,HIGH
           ignore-unfixed: true
@@ -124,8 +150,9 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           provenance: false
-          cache-from: type=gha,scope=release-image
-          cache-to: type=gha,scope=release-image,mode=max
+          cache-from: |
+            type=gha,scope=release-image-amd64
+            type=gha,scope=release-image-arm64
 
       - name: Summary
         env:
