@@ -66,19 +66,19 @@ jobs:
       # checks (which have no "skip" concept) still run for real there.
       - name: SonarQube Cloud Scan
         if: ${{ !cancelled() && env.HAS_SONAR_TOKEN == 'true' }}
-        uses: SonarSource/sonarqube-scan-action@ba9859eae8dd6bd29e412f25ddbbef3d032000f4 # v8.2.2
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       - name: Upload coverage to Codecov
         if: ${{ !cancelled() && env.HAS_CODECOV_TOKEN == 'true' }}
-        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: uploader/coverage.xml
           fail_ci_if_error: true
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && env.HAS_CODECOV_TOKEN == 'true' }}
-        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: uploader/junit.xml
