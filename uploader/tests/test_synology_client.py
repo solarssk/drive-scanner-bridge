@@ -116,7 +116,7 @@ def test_login_failure_raises_with_error_code():
 
     try:
         client.login()
-        assert False, "expected SynologyAPIError"
+        raise AssertionError("expected SynologyAPIError")
     except SynologyAPIError as exc:
         assert exc.code == 400
 
@@ -168,7 +168,7 @@ def test_upload_file_failure_raises():
 
     try:
         client.upload_file(BytesIO(b"x"), "a.pdf", "/team-folders/printer")
-        assert False, "expected SynologyAPIError"
+        raise AssertionError("expected SynologyAPIError")
     except SynologyAPIError:
         pass
 
@@ -203,7 +203,7 @@ def test_delete_path_raises_when_not_found():
 
     try:
         client.delete_path("/team-folders/printer/missing.txt")
-        assert False, "expected SynologyAPIError"
+        raise AssertionError("expected SynologyAPIError")
     except SynologyAPIError:
         pass
 
@@ -238,7 +238,7 @@ def test_network_error_message_never_leaks_password_from_url():
 
     try:
         client.login()
-        assert False, "expected SynologyAPIError"
+        raise AssertionError("expected SynologyAPIError")
     except SynologyAPIError as exc:
         assert "super-secret-pw" not in str(exc)
 
