@@ -30,7 +30,7 @@ more Tier 3 machinery (DAST, SBOM, wiki) unless the scope actually grows.
 | 2 | Secret scanning | done (GitHub native secret scanning + push protection) |
 | 2 | SAST (CodeQL) on PR and weekly | done |
 | 2 | Dependabot for every used ecosystem (pip, actions, docker) | done (pip, github-actions, docker) |
-| 2 | Container scan, blocking | done (CRITICAL blocks PRs, weekly CRITICAL+HIGH) |
+| 2 | Container scan, blocking | done (CRITICAL blocks PRs, weekly CRITICAL+HIGH, the published image is scanned before push) |
 | 2 | `concurrency:` group in every workflow | done |
 | 2 | CONTRIBUTING.md, PR template, CODEOWNERS | done |
 | 2 | Badge row (CI, release, license) | done |
@@ -59,8 +59,10 @@ change or every PR will wait forever for a check that no longer exists.
 
 ## Release process
 
-No package is published anywhere. A release is a git tag + GitHub Release (source
-snapshot) and an image tag for local `docker build`.
+A release is a git tag + GitHub Release and a container image on ghcr.io
+(`ghcr.io/solarssk/drive-scanner-bridge:<version>`, `linux/amd64` + `linux/arm64`). Pushing the tag runs
+`.github/workflows/release-image.yml`: it builds, scans (CRITICAL or HIGH with a fix
+blocks), and only then pushes.
 
 1. Close or move every issue in the milestone.
 2. Bump the version everywhere: `uploader/pyproject.toml`,
@@ -71,6 +73,21 @@ snapshot) and an image tag for local `docker build`.
 4. Open a `release/x.y.z` PR; the owner merges it once CI is green on `main`.
 5. Tag the merge commit (annotated, no `v` prefix, matching the image tag), publish the
    GitHub Release with the CHANGELOG section as notes, close the milestone.
+6. Check the `Publish image` run and that the new tag appears under
+   `github.com/solarssk?tab=packages`. A version that was tagged before the workflow
+   existed is published by hand: Actions -> Publish image -> Run workflow, with that
+   version and `publish` ticked.
+
+### Container registry (ghcr.io)
+
+- The first push creates the package **private**. Make it public once (package settings
+  on GitHub, Danger Zone, Change visibility; there is no API for it) or give Portainer a
+  registry credential with a token that has `read:packages`.
+- The image carries the `org.opencontainers.image.source` label (set by the workflow), which
+  links the package to this repository.
+- Only exact version tags are published, no `latest`, so a deployment never moves by itself.
+- A pull request that touches the workflow, the Dockerfile or `requirements.txt` runs the
+  same pipeline as a dry run: both platforms are built and scanned, nothing is pushed.
 
 ## Dependabot
 

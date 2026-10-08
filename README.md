@@ -235,10 +235,15 @@ cd scanner-drive-bridge
 cp .env.example .env
 # edit .env: at minimum set SYNOLOGY_HOST, SMB1_STATIC_IP, SMB_PRT01_PASSWORD
 printf '%s' 'the prt01 DSM password' > secrets/synology_password
-docker build -t scanner-drive-bridge-uploader:0.1.1 ./uploader
-docker compose up -d
+docker compose up -d   # pulls ghcr.io/solarssk/drive-scanner-bridge:0.1.1
 docker compose logs -f drive-uploader
 ```
+
+The image is published to ghcr.io on every release for `linux/amd64` and
+`linux/arm64`. If the package is private, run `docker login ghcr.io` first with a
+GitHub personal access token that has `read:packages`. To build it yourself instead
+(development, or no registry access), build under the same name before `up`:
+`docker build -t ghcr.io/solarssk/drive-scanner-bridge:0.1.1 ./uploader`.
 
 `secrets/synology_password` is required. `secrets/synology_ca` is optional
 (only needed if `SYNOLOGY_VERIFY_TLS=true` and the NAS's HTTPS certificate
@@ -287,20 +292,20 @@ Portainer instance, not just reasoned about):
   exists locally -- unlike plain `docker compose up` on the CLI, which
   skips building if the image is already present. So `docker-compose.yml`
   deliberately has **no `build:` section** for `drive-uploader` at all: the
-  image must already exist locally (via the step above, or `docker build`
-  over SSH) before the stack is deployed, and the stack only ever runs it.
+  image comes from a registry (step 1) or must already exist locally under
+  the same name, and the stack only ever runs it.
 
 Steps:
 
-1. **Build the image**: Portainer -> Images -> Build a new image -> Build
-   method **Upload** -> upload a tarball of `uploader/`'s contents
-   (Dockerfile at the tar's root -- this repo's `uploader/` directory,
-   tarred up; regenerate it after any Dockerfile/source change). Name it
-   explicitly and exactly, matching the `image:` line in
-   `docker-compose.yml` (`scanner-drive-bridge-uploader:0.1.1` by default --
-   bump both together on every rebuild, see "Upgrading" below). This builds
-   natively for whatever CPU architecture the NAS actually is, no cross-arch
-   guessing needed.
+1. **The image**: nothing to build. The stack pulls `ghcr.io/solarssk/drive-scanner-bridge:0.1.1`
+   itself. If the package is private, add credentials once: Portainer ->
+   Registries -> Add registry -> Custom, URL `ghcr.io`, your GitHub username
+   and a personal access token with `read:packages` (or make the package
+   public in its settings on GitHub).
+   *Fallback without registry access*: Portainer -> Images -> Build a new
+   image -> Build method **Upload** -> a tarball of `uploader/`'s contents
+   (Dockerfile at the tar's root), named exactly like the `image:` line in
+   `docker-compose.yml`. That builds natively for the NAS's CPU.
 2. **Create a small folder on the NAS filesystem** for the secret (this
    *is* a runtime bind mount, so it works regardless of what Portainer's
    own container can see), e.g. via File Station:
@@ -330,16 +335,14 @@ Steps:
    ```bash
    python3 -m scanner_drive_bridge.test_connection
    ```
-6. **Updating after a code/image change:** repeat step 1 under a *new* tag
-   (e.g. `scanner-drive-bridge:v2`), update the `image:` line in the
-   stack's pasted YAML to match, and **Update the stack**. Always bump the
-   tag on updates rather than rebuilding under the same one -- it removes
-   any ambiguity about whether Portainer picked up the new image content or
-   kept running the old container.
+6. **Updating to a new release:** change the version in the `image:` line of
+   the stack's pasted YAML and **Update the stack** (tick *Re-pull image*).
+   Always use an exact version tag, never a moving one -- it removes any
+   ambiguity about which image content the container is running.
 
 If you'd rather manage this over SSH instead of Portainer, `docker-compose.yml`
 works unmodified with the CLI flow in [Deployment](#deployment) above
-(`docker build` once, then plain `docker compose up -d`; `PROJECT_DIR` stays
+(plain `docker compose up -d`, which pulls the image; `PROJECT_DIR` stays
 unset and defaults to `.`).
 
 ## Secrets and credentials
@@ -400,7 +403,7 @@ way -- see `uploader/Dockerfile` for the exact stages.
 
 Re-run the scan yourself after any base image bump:
 ```bash
-docker scout cves scanner-drive-bridge-uploader:0.1.1
+docker scout cves ghcr.io/solarssk/drive-scanner-bridge:0.1.1
 ```
 
 The 0/0/0/0 result above reflects the state at the time the distroless
@@ -418,6 +421,8 @@ something no code change here can fix.
 
 Both base images are pinned by digest in `uploader/Dockerfile`, so a base-image
 change is always a reviewable pull request rather than a silent `:latest` drift.
+The image that is published to ghcr.io on a release is scanned **before** it is
+pushed, and any CRITICAL or HIGH finding with a fix stops the publish.
 The base moved from `python3-debian12` to `python3-debian13` in 0.1.1: the
 debian12 image had not picked up Debian's fixes for weeks (25 fixable HIGH
 findings in libexpat1, krb5, libpython3.11 and libssl3, red in the weekly scan
@@ -506,8 +511,8 @@ thing that changed underneath it is where `/share` is backed by
 ## Upgrading
 
 ```bash
-git pull
-docker compose build drive-uploader
+git pull   # brings the new image tag in docker-compose.yml
+docker compose pull drive-uploader
 docker compose up -d
 ```
 

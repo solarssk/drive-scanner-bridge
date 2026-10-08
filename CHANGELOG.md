@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- The uploader image is published to `ghcr.io/solarssk/drive-scanner-bridge` (`linux/amd64` and
+  `linux/arm64`) when a release tag is pushed, after a Trivy scan that blocks on any
+  CRITICAL or HIGH finding with a fix (`release-image.yml`).
+
+### Changed
+
+- `docker-compose.yml` pulls `ghcr.io/solarssk/drive-scanner-bridge:<version>` instead of expecting a locally
+  built `scanner-drive-bridge-uploader` image. Building locally still works under the new name.
+
 ## [0.1.1] - 2026-10-08
 
 Stabilization of the current two-container architecture. No behavior change to the

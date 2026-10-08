@@ -1,0 +1,139 @@
+name: Publish image
+
+# Publishes the uploader image to ghcr.io when a release tag (x.y.z) is pushed.
+# A manual run can publish a version that was tagged before this workflow existed,
+# or just dry-run it (publish: false). Pull requests that touch this workflow, the
+# Dockerfile or the dependency lock only dry-run: both platforms are built and the
+# image is scanned, but nothing logs in or pushes.
+on:
+  push:
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
+  pull_request:
+    paths:
+      - ".github/workflows/release-image.yml"
+      - "uploader/Dockerfile"
+      - "uploader/requirements.txt"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Existing release tag to build, e.g. 0.1.1"
+        required: true
+        type: string
+      publish:
+        description: "Push to ghcr.io (false = build and scan only)"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || inputs.version || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/solarssk/drive-scanner-bridge
+
+jobs:
+  image:
+    name: Build, scan, publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      PUBLISH: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish) }}
+    steps:
+      - name: Resolve the version to build
+        id: v
+        env:
+          EVENT: ${{ github.event_name }}
+          TAG: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          case "$EVENT" in
+            push) version="$TAG" ;;
+            workflow_dispatch) version="$INPUT_VERSION" ;;
+            *) version="dev" ;;
+          esac
+          if [ "$version" != "dev" ] && ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "not a release version: $version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && steps.v.outputs.version || '' }}
+          persist-credentials: false
+
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to ghcr.io
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image name, tags and labels
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE }}
+          tags: type=raw,value=${{ steps.v.outputs.version }}
+
+      # Scan what will be published BEFORE pushing it: build the amd64 image into the
+      # local store first and let a CRITICAL or HIGH finding with a fix stop the run.
+      - name: Build amd64 image for the pre-push scan
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ./uploader
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: ${{ env.IMAGE }}:scan
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: false
+          cache-from: type=gha,scope=release-image
+          cache-to: type=gha,scope=release-image,mode=max
+
+      - name: Scan the image (CRITICAL and HIGH with a fix block publishing)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}:scan
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      # provenance is off so the manifest list holds exactly the two platform images
+      # (no extra attestation entries that older Docker/registry UIs show as "unknown").
+      - name: Build both platforms and push
+        id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ./uploader
+          platforms: linux/amd64,linux/arm64
+          push: ${{ env.PUBLISH == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: false
+          cache-from: type=gha,scope=release-image
+          cache-to: type=gha,scope=release-image,mode=max
+
+      - name: Summary
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          if [ "$PUBLISH" = "true" ]; then
+            echo "Published \`$TAGS\` (digest \`$DIGEST\`)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Dry run: \`$TAGS\` built for linux/amd64 and linux/arm64 and scanned, nothing pushed" >> "$GITHUB_STEP_SUMMARY"
+          fi
