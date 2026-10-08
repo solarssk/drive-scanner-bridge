@@ -1,0 +1,45 @@
+name: Bug report
+description: Something in the bridge does not behave as documented
+labels: [bug]
+assignees: [solarssk]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do **not** paste passwords, session ids or the contents of `secrets/` or `.env`.
+        For anything touching credentials, DSM authentication or the SMB1/Samba auth
+        settings use the private security advisory link instead of this form.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you expect, and what did the bridge do instead?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log lines
+      description: "`docker compose logs drive-uploader` around the problem. Redact hostnames you do not want public."
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The image tag from docker-compose.yml (for example 0.1.0)
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: How it is deployed
+      options:
+        - docker compose over SSH
+        - Portainer stack
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: scanner
+    attributes:
+      label: Scanner model (if the problem involves scanning)
