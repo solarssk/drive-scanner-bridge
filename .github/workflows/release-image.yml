@@ -1,5 +1,9 @@
 name: Publish image
 
+# The title carries the request id when release.yml dispatches this workflow, so that run can
+# be found unambiguously (no other run can have that id in its title).
+run-name: Publish image ${{ inputs.version || github.head_ref || github.ref_name }}${{ inputs.request_id && format(' [{0}]', inputs.request_id) || '' }}
+
 # Publishes the uploader image to ghcr.io. release.yml dispatches it on the new tag when a
 # release PR merges; that is the normal path. A manual run (version + publish) publishes or
 # dry-runs a version by hand, and a release tag (x.y.z) pushed by hand also publishes, as a
@@ -27,6 +31,11 @@ on:
         required: true
         type: boolean
         default: false
+      request_id:
+        description: "Set by release.yml so it can find this exact run; leave empty by hand"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read

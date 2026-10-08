@@ -11,7 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Releases are automatic. Merging a release PR to `main` (version bumped, matching
   `## [X.Y.Z] - date` CHANGELOG entry) now creates the git tag and the GitHub Release (notes
   built from the CHANGELOG by `scripts/format_release_notes.py`), publishes the image and closes
-  the milestone, but only after the image run has finished successfully (`release.yml`). A version
+  the milestone, but only after the image run it dispatched has finished successfully
+  (`release.yml`; a manual run on the same version cannot be mistaken for it). A version
   that disagrees between `pyproject.toml`, `__version__`, the compose image tag and the CHANGELOG
   fails the run and releases nothing.
 

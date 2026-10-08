@@ -76,7 +76,9 @@ container image on ghcr.io (`ghcr.io/solarssk/drive-scanner-bridge:<version>`, `
    heading all agree (a mismatch fails the run and releases nothing), creates the tag
    `x.y.z` on the merge commit and the GitHub Release (notes from the CHANGELOG via
    `scripts/format_release_notes.py`), dispatches `Publish image`, **waits for that run to
-   finish**, and only if it succeeded closes the milestone.
+   finish**, and only if it succeeded closes the milestone. It waits for the exact run it
+   dispatched (the run URL `gh` returns, or else a request id in the run's title), so a manual
+   `Publish image` run on the same version can never be mistaken for it.
 6. `Publish image` builds each platform, scans each one (CRITICAL or HIGH with a fix blocks)
    and only then pushes. Check that the `Release` run is green and that the tag appears under
    `github.com/solarssk?tab=packages`.
