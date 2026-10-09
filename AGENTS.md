@@ -18,7 +18,9 @@ Do not start that work unless you were asked to.
 This repository follows the solarssk engineering standard: https://github.com/solarssk/playbook
 Tier: 2 (see playbook/docs/tiers.md)
 
-Do not add Tier 3 machinery (DAST, SBOM, a wiki) unless the scope grows.
+Do not add Tier 3 machinery (DAST, a user-facing wiki, a coverage or quality gate beyond the
+report-only Codecov and SonarCloud) unless the scope grows. An SBOM for the published image is
+Tier 2 and is required here.
 
 ## Commands
 

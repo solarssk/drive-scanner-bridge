@@ -22,7 +22,9 @@ This repository follows the [solarssk playbook](https://github.com/solarssk/play
 SonarCloud and Codecov are Tier 3 items that were added deliberately.
 
 > [!NOTE]
-> Do not add more Tier 3 machinery (DAST, SBOM, a wiki) unless the scope actually grows.
+> Do not add more Tier 3 machinery (DAST, a user-facing wiki) unless the scope actually grows.
+> An SBOM is not Tier 3: the playbook requires one at Tier 2 for any repository that publishes a
+> container image, which this one does.
 
 | Tier | Item | Status |
 |---|---|---|
@@ -47,6 +49,8 @@ SonarCloud and Codecov are Tier 3 items that were added deliberately.
 | 2 | Blocking container scan | ✅ see [Container scanning](#container-scanning) |
 | 2 | `concurrency:` group in every workflow | ✅ |
 | 2 | Release automation (tag, Release, image, milestone) | ✅ `release.yml` |
+| 2 | SBOM (CycloneDX) for the published image | ✅ attached to each Release |
+| 2 | OpenSSF Scorecard workflow, report-only | ✅ `scorecard.yml` |
 | 2 | CONTRIBUTING.md, PR template, CODEOWNERS | ✅ |
 | 2 | Badge row (CI, release, license) | ✅ |
 | 2 | README follows the playbook README standard, depth in `docs/` | ✅ |
