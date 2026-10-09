@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The OpenSSF Scorecard workflow no longer cancels its own run: a push and a branch-protection
+  change on the same ref shared one concurrency group, so on the 0.1.6 merge commit the push run
+  was cancelled by the run the protection change started 18 seconds later. Each event now has its
+  own group and nothing is cancelled.
+
 ## [0.1.6] - 2026-10-09
 
 The dev tools that CI runs are now pinned by hash, and this changelog records which base image

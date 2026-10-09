@@ -13,9 +13,12 @@ on:
 
 permissions: {}
 
+# One group per event, and never cancel. A push and a branch-protection change on the same ref
+# used to share a group, so the later one cancelled the earlier and left a cancelled run next
+# to the release commit. Scorecard only reports, so letting both finish costs nothing.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   analysis:
