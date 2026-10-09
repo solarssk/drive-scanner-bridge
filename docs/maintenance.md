@@ -52,6 +52,9 @@ SonarCloud and Codecov are Tier 3 items that were added deliberately.
 | 2 | SBOM (CycloneDX) for the published image | ✅ attached to each Release |
 | 2 | OpenSSF Scorecard workflow, report-only | ✅ `scorecard.yml` |
 | 2 | CONTRIBUTING.md, PR template, CODEOWNERS | ✅ |
+| 2 | "Documentation impact" in the PR template, checked in CI against the diff | ✅ `docs-impact.yml` |
+| 2 | Documentation checks (links, anchors, style, settings table) | ✅ in the unit tests |
+| 2 | The playbook's `verify-tier` runs against this repo | ✅ `verify-standard.yml`, pinned to v0.2.0 |
 | 2 | Badge row (CI, release, license) | ✅ |
 | 2 | README follows the playbook README standard, depth in `docs/` | ✅ |
 | 2 | `AGENTS.md` with the standard pointer, `CLAUDE.md` that imports it | ✅ |
@@ -68,6 +71,7 @@ Keep this table current when an item changes status.
 | Branch names | `<type>/<short-description>`, type is `fix`, `feature`, `maintenance`, `security`, `docs` or `release` |
 | Milestones | One per release, named exactly like the version (`0.1.4`). Closed automatically when the release is published. |
 | Merging | The owner merges. Required checks apply to admins too, with no bypass. |
+| Playbook updates | Dependabot proposes a bump of the pinned `verify-standard.yml` call. Read the release's "Adopter action" list, then bump. |
 | Doc file names | Lowercase kebab-case in `docs/` (`troubleshooting.md`). Uppercase only for the conventional root files (`README`, `AGENTS`, `CLAUDE`, `CONTRIBUTING`, `SECURITY`, `CHANGELOG`, `LICENSE`). Details: [docs/AGENTS.md](AGENTS.md). |
 | Roadmap | Lives in one place: [docs/roadmap/](roadmap/README.md). |
 

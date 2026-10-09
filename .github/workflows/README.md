@@ -13,6 +13,8 @@ workflows are in [AGENTS.md](../AGENTS.md).
 | [`release-image.yml`](release-image.yml) | pull requests that change the Dockerfile, the lock, `pyproject.toml` or the workflow (dry run); dispatch from `release.yml`; manual | Builds both platforms, scans each, writes a CycloneDX SBOM each, pushes to ghcr.io only when publishing | No |
 | [`release.yml`](release.yml) | push to `main`, manual (from `main` only) | Tag, GitHub Release, image, milestone | Not applicable |
 | [`weekly-image-scan.yml`](weekly-image-scan.yml) | Mondays 06:00 UTC, manual | Full CRITICAL and HIGH scan of the image | No |
+| [`docs-impact.yml`](docs-impact.yml) | pull requests (also when the description is edited) | Checks the PR's "Documentation impact" choice against its diff | No |
+| [`verify-standard.yml`](verify-standard.yml) | pull requests, push to `main` | Runs the playbook's `verify-tier` against this repository, pinned to a playbook release | No |
 | [`scorecard.yml`](scorecard.yml) | push to `main`, Wednesdays 04:00 UTC, branch-protection changes | OpenSSF Scorecard, report-only, publishes the result for the badge | No |
 
 Dependabot is configured in [`../dependabot.yml`](../dependabot.yml): pip, github-actions
