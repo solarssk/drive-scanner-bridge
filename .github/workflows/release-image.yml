@@ -162,6 +162,18 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
 
+      # The SBOM comes from the same loaded image that was just scanned, never from a
+      # separate build, so it describes exactly what is pushed. It is generated on dry runs
+      # too, so that a pull request exercises this step and a broken one cannot first show up
+      # during a real release. Only a publishing run keeps the files (see the upload below).
+      - name: SBOM linux/amd64 (CycloneDX)
+        if: steps.published.outputs.already != 'true'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}:scan-amd64
+          format: cyclonedx
+          output: sbom-linux-amd64.cdx.json
+
       - name: Build linux/arm64 for the pre-push scan
         if: steps.published.outputs.already != 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -186,8 +198,26 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
 
+      # The SBOM comes from the same loaded image that was just scanned, never from a
+      # separate build, so it describes exactly what is pushed.
+      - name: SBOM linux/arm64 (CycloneDX)
+        if: steps.published.outputs.already != 'true'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}:scan-arm64
+          format: cyclonedx
+          output: sbom-linux-arm64.cdx.json
+
       # provenance is off so the manifest list holds exactly the two platform images
       # (no extra attestation entries that older Docker/registry UIs show as "unknown").
+      - name: Keep the SBOMs for the release
+        if: env.PUBLISH == 'true' && steps.published.outputs.already != 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom
+          path: sbom-linux-*.cdx.json
+          retention-days: 90
+
       - name: Build both platforms and push
         id: push
         if: steps.published.outputs.already != 'true'

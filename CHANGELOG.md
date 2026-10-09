@@ -20,6 +20,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Labels follow the playbook: `bug`, `enhancement` and `documentation` became `type: bug`,
+  `type: feature` and `type: docs` (renamed, so existing issues and PRs keep them), and
+  `type: chore` was added. The bug report form applies `type: bug`.
+- The pull request template follows the playbook (Description, How to test, What stays, a
+  **Documentation impact** choice, Checklist), and `docs-impact.yml` checks the choice against the
+  files the PR changes. `scripts/check_docs.py` (also a unit test) checks links, anchors, code and
+  Mermaid blocks, dashes, file names, folder READMEs and the settings table. The playbook's own
+  `verify-tier` runs against this repository (`verify-standard.yml`, pinned to v0.2.0).
+- Each release now carries a CycloneDX SBOM per platform (`sbom-linux-amd64.cdx.json`,
+  `sbom-linux-arm64.cdx.json`), generated from the image that was scanned and pushed and attached
+  to the GitHub Release. A new report-only OpenSSF Scorecard workflow scores the repository's
+  supply-chain posture weekly and on pushes to `main`. `docs/security.md` has a Supply chain
+  section.
 - CI lints the workflows with `actionlint` and `zizmor` and scans the commits of each run for
   secrets with `gitleaks` (both tools pinned, downloaded binaries checksum-verified). Every
   checkout sets `persist-credentials: false`, and every Dependabot entry has a 7-day

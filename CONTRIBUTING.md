@@ -4,10 +4,9 @@ This is a personal-infrastructure project, maintained solo and best-effort.
 There's no formal review process, but a few light conventions keep issues
 and PRs readable months later:
 
-- **Before opening a PR:** assign yourself, attach at least one label
-  (`security`, `ci`, `governance`, `bug`, `enhancement`, `documentation`,
-  ...), and attach it to the current milestone if one is open. Dependabot's
-  own PRs are exempt: it labels and targets them automatically.
+- **Before opening a PR:** assign yourself, attach at least one label (a `type:` label, plus
+  `security`, `ci` or `governance` where they fit), and attach it to the current milestone if
+  one is open. Dependabot's own PRs are exempt: it labels and targets them automatically.
 - **Branch naming:** `<type>/<short-description>`, e.g.
   `maintenance/governance-ci-hardening`. `type` is one of `fix`, `feature`,
   `maintenance`, `security`, `docs`, `release` (`release/x.y.z` for a release PR).

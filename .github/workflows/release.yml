@@ -183,6 +183,7 @@ jobs:
       # Always runs, also on a rerun after a partial failure; release-image.yml refuses to
       # overwrite a tag that is already published, so repeating it is harmless.
       - name: Publish the container image and wait for it
+        id: image
         if: steps.bump.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -226,6 +227,26 @@ jobs:
             exit 1
           fi
           echo "Image published: ${URL}"
+          echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+
+      # Best effort, on purpose. The SBOMs are produced by the image run that just succeeded. A
+      # rerun after a partial failure finds the image already published, so that run builds and
+      # scans nothing and has no SBOM to hand over; that must not keep the milestone open.
+      - name: Attach the SBOMs to the GitHub Release
+        if: steps.bump.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.bump.outputs.version }}
+          IMAGE_RUN_ID: ${{ steps.image.outputs.run_id }}
+        run: |
+          set -uo pipefail
+          rm -rf sbom
+          if gh run download "$IMAGE_RUN_ID" --name sbom --dir sbom \
+              && gh release upload "$VERSION" sbom/*.cdx.json --clobber; then
+            echo "Attached to release ${VERSION}: $(printf '%s ' sbom/*)"
+          else
+            echo "::warning::Could not attach the SBOMs to release ${VERSION} (run ${IMAGE_RUN_ID} has no sbom artifact, for example when the image was already published). The image itself is fine."
+          fi
 
       - name: Close the matching milestone
         if: steps.bump.outputs.skip != 'true'
