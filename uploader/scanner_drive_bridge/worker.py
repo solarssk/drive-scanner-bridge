@@ -190,37 +190,51 @@ class Worker:
             logger.exception("unexpected error checking local retention cleanup")
             return
         for record in expired:
-            path = self._config.incoming_dir / record.original_name
-            if not path.exists():
-                continue
             try:
-                digest, _size = hash_file(path)
-            except OSError:
-                continue
-            if digest != record.sha256:
-                # The scanner reuses filenames across genuinely different
-                # scans (see state.py). This name now belongs to a newer,
-                # not-yet-uploaded file: the expired record no longer
-                # describes what is on disk, so discard the record but never
-                # touch the file itself.
-                logger.warning(
-                    "retention cleanup skipped file=%s: current content no longer matches "
-                    "the uploaded record it was kept for (name reused by a newer scan), "
-                    "discarding the stale record instead of touching the file",
+                self._expire_record(record, retention_hours)
+            except Exception:  # noqa: BLE001
+                logger.exception(
+                    "unexpected error in retention cleanup for file=%s, will retry next cycle",
                     record.original_name,
                 )
-                self._state.delete(record.sha256)
-                continue
-            self._safe_remove(path)
-            # The local copy is gone, so the record has nothing left to
-            # protect. Keeping it would make a later scan of identical content
-            # (e.g. re-scanning a page deleted from Drive) match this stale
-            # record and be removed on arrival, before it was ever uploaded.
+
+    def _expire_record(self, record: FileRecord, retention_hours: float) -> None:
+        path = self._config.incoming_dir / record.original_name
+        if not path.exists():
+            # Nothing left on disk (removed by an older version's cleanup, or
+            # by hand). The expired record would only make identical content
+            # scanned later look like a duplicate that is removed on arrival.
             self._state.delete(record.sha256)
-            logger.info(
-                "removed local copy past retention window (%.1fh) file=%s",
-                retention_hours, record.original_name,
+            return
+        try:
+            digest, _size = hash_file(path)
+        except OSError:
+            return
+        if digest != record.sha256:
+            # The scanner reuses filenames across genuinely different
+            # scans (see state.py). This name now belongs to a newer,
+            # not-yet-uploaded file: the expired record no longer
+            # describes what is on disk, so discard the record but never
+            # touch the file itself.
+            logger.warning(
+                "retention cleanup skipped file=%s: current content no longer matches "
+                "the uploaded record it was kept for (name reused by a newer scan), "
+                "discarding the stale record instead of touching the file",
+                record.original_name,
             )
+            self._state.delete(record.sha256)
+            return
+        if not self._safe_remove(path):
+            return  # still on disk: keep the record so cleanup retries next cycle
+        # The local copy is gone, so the record has nothing left to protect.
+        # Keeping it would make a later scan of identical content (e.g.
+        # re-scanning a page deleted from Drive) match this stale record and
+        # be removed on arrival, before it was ever uploaded.
+        self._state.delete(record.sha256)
+        logger.info(
+            "removed local copy past retention window (%.1fh) file=%s",
+            retention_hours, record.original_name,
+        )
 
     # -- per-file handling ---------------------------------------------------
 
@@ -348,7 +362,7 @@ class Worker:
         self._state.schedule_retry(record.sha256, delay, str(exc), self._clock())
 
     @staticmethod
-    def _safe_remove(path: Path) -> None:
+    def _safe_remove(path: Path) -> bool:
         try:
             path.unlink()
         except OSError as exc:
@@ -356,6 +370,8 @@ class Worker:
                 "could not remove local file after upload (will not be re-uploaded) file=%s error=%s",
                 path.name, exc,
             )
+            return False
+        return True
 
     # -- observability ---------------------------------------------------
 

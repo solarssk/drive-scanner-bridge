@@ -528,14 +528,57 @@ def test_retention_cleanup_removes_local_copy_and_its_record(make_config):
     state.close()
 
 
-def test_retention_cleanup_ignores_record_whose_file_is_already_gone(make_config):
+def test_retention_cleanup_purges_expired_record_whose_file_is_already_gone(make_config):
+    # Rows left behind by an older version's cleanup must not make identical
+    # content scanned later look like an already-handled duplicate.
     config, client, worker, state, clock = _uploaded_worker(make_config)
-    (config.incoming_dir / "SCN_0001.pdf").unlink()
+    path = config.incoming_dir / "SCN_0001.pdf"
+    path.unlink()
 
     clock.advance(25 * 3600)
     worker._loop_once()
+    assert state.get(_sha(b"scan-content")) is None
 
-    assert state.get(_sha(b"scan-content")).state == "uploaded"  # left for a later pass
+    path.write_bytes(b"scan-content")
+    worker._loop_once()
+    worker._loop_once()
+    assert path.exists()
+    assert client.upload_calls == ["SCN_0001.pdf", "SCN_0001.pdf"]
+    state.close()
+
+
+def test_retention_cleanup_keeps_record_when_unlink_fails(make_config, monkeypatch):
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+    clock.advance(25 * 3600)
+
+    def refuse(self):
+        raise PermissionError("read-only file system")
+
+    monkeypatch.setattr("pathlib.Path.unlink", refuse)
+    worker._loop_once()
+    monkeypatch.undo()
+
+    assert (config.incoming_dir / "SCN_0001.pdf").exists()
+    assert state.get(_sha(b"scan-content")).state == "uploaded"  # retried later
+
+    worker._loop_once()
+    assert not (config.incoming_dir / "SCN_0001.pdf").exists()
+    assert state.get(_sha(b"scan-content")) is None
+    state.close()
+
+
+def test_retention_cleanup_survives_failing_record_delete(make_config, monkeypatch, caplog):
+    caplog.set_level(logging.ERROR)
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+    clock.advance(25 * 3600)
+
+    def locked(sha256):
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(state, "delete", locked)
+    worker._loop_once()  # must not raise
+
+    assert any("retention cleanup for file=SCN_0001.pdf" in r.message for r in caplog.records)
     state.close()
 
 
