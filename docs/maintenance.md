@@ -22,7 +22,9 @@ This repository follows the [solarssk playbook](https://github.com/solarssk/play
 SonarCloud and Codecov are Tier 3 items that were added deliberately.
 
 > [!NOTE]
-> Do not add more Tier 3 machinery (DAST, SBOM, a wiki) unless the scope actually grows.
+> Do not add more Tier 3 machinery (DAST, a user-facing wiki) unless the scope actually grows.
+> An SBOM is not Tier 3: the playbook requires one at Tier 2 for any repository that publishes a
+> container image, which this one does.
 
 | Tier | Item | Status |
 |---|---|---|
