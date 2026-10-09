@@ -389,3 +389,298 @@ def test_destination_not_found_logs_warning_but_does_not_crash(make_config, capl
 
     assert any("was not found" in r.message for r in caplog.records)
     state.close()
+
+
+def test_local_retention_does_not_delete_new_file_reusing_expired_filename(make_config):
+    # Regression test: the scanner reuses filenames across genuinely
+    # different scans (see state.py). If an old, already-expired "uploaded"
+    # record shares a filename with a brand-new, not-yet-uploaded scan,
+    # retention cleanup must never delete the new file just because *a*
+    # file exists at that path -- it must verify the content hash first.
+    config = make_config(delete_after_upload=False, local_retention_hours=24.0)
+    (config.incoming_dir / "SCN_0001.pdf").write_bytes(b"old-scan-content")
+    client = FakeSynologyClient()
+    worker, state, clock = _build_worker(config, client)
+
+    worker.startup()
+    worker._loop_once()
+    worker._loop_once()
+    assert client.upload_calls == ["SCN_0001.pdf"]
+    old_sha = _sha(b"old-scan-content")
+    assert state.get(old_sha).state == "uploaded"
+
+    clock.advance(25 * 3600)  # past the 24h retention window
+    worker._loop_once()
+    assert not (config.incoming_dir / "SCN_0001.pdf").exists()  # old copy cleaned up
+
+    # scanner reuses the same filename for a brand-new, different scan
+    (config.incoming_dir / "SCN_0001.pdf").write_bytes(b"brand-new-scan-content")
+    worker._loop_once()  # first sighting only -- not yet stability-confirmed
+
+    assert (config.incoming_dir / "SCN_0001.pdf").exists(), (
+        "retention cleanup must not delete a file just because it shares a "
+        "name with an old, expired upload record -- it must verify content first"
+    )
+    assert client.upload_calls == ["SCN_0001.pdf"]  # no new upload attempted yet
+    assert state.get(old_sha) is None  # stale record discarded, not left dangling
+
+    worker._loop_once()  # second unchanged poll satisfies stability_checks=2
+
+    new_sha = _sha(b"brand-new-scan-content")
+    assert state.get(new_sha).state == "uploaded"
+    assert client.upload_calls == ["SCN_0001.pdf", "SCN_0001.pdf"]
+    state.close()
+
+
+def test_retention_cleanup_never_confuses_files_of_different_extensions(make_config):
+    # The scanner produces different formats depending on job settings (PDF,
+    # JPEG, and others seen in practice). Filenames are compared as exact
+    # strings including the extension, so "SCN_0001.pdf" and "SCN_0001.jpg"
+    # are unrelated files from the first byte onward -- retention cleanup
+    # for one must never touch the other, even though the numeric part
+    # scanners use to build these names is identical.
+    config = make_config(delete_after_upload=False, local_retention_hours=24.0)
+    (config.incoming_dir / "SCN_0001.pdf").write_bytes(b"old-pdf-content")
+    client = FakeSynologyClient()
+    worker, state, clock = _build_worker(config, client)
+
+    worker.startup()
+    worker._loop_once()
+    worker._loop_once()
+    assert client.upload_calls == ["SCN_0001.pdf"]
+
+    clock.advance(25 * 3600)  # SCN_0001.pdf is now past its retention window
+
+    # a different scan, same numeric name but a different format, lands
+    # right as the old .pdf record expires
+    (config.incoming_dir / "SCN_0001.jpg").write_bytes(b"new-jpg-content")
+    worker._loop_once()
+    worker._loop_once()
+
+    assert not (config.incoming_dir / "SCN_0001.pdf").exists()  # old .pdf cleaned up on schedule
+    assert (config.incoming_dir / "SCN_0001.jpg").exists()  # new .jpg untouched and kept
+    assert client.upload_calls == ["SCN_0001.pdf", "SCN_0001.jpg"]
+    assert state.get(_sha(b"new-jpg-content")).state == "uploaded"
+    state.close()
+
+
+def test_rescan_of_identical_content_after_retention_removal_is_uploaded(make_config):
+    # Regression: after retention removed the kept copy, a new scan with the
+    # same name and bytes matched the stale record and was deleted on arrival.
+    config = make_config(delete_after_upload=False, local_retention_hours=24.0)
+    path = config.incoming_dir / "SCN_0001.pdf"
+    path.write_bytes(b"scan-content")
+    client = FakeSynologyClient()
+    worker, state, clock = _build_worker(config, client)
+
+    worker.startup()
+    worker._loop_once()
+    worker._loop_once()
+    clock.advance(25 * 3600)
+    worker._loop_once()
+    assert not path.exists()
+
+    path.write_bytes(b"scan-content")
+    worker._loop_once()
+    assert path.exists()
+    worker._loop_once()
+    assert client.upload_calls == ["SCN_0001.pdf", "SCN_0001.pdf"]
+    state.close()
+
+
+def _uploaded_worker(make_config, content=b"scan-content"):
+    config = make_config(delete_after_upload=False, local_retention_hours=24.0)
+    (config.incoming_dir / "SCN_0001.pdf").write_bytes(content)
+    client = FakeSynologyClient()
+    worker, state, clock = _build_worker(config, client)
+    worker.startup()
+    worker._loop_once()
+    worker._loop_once()
+    assert state.get(_sha(content)).state == "uploaded"
+    return config, client, worker, state, clock
+
+
+def test_retention_cleanup_keeps_file_overwritten_with_new_content(make_config, caplog):
+    # The kept copy is replaced by a different scan under the same name before
+    # its record expires: the file must survive and the stale record go.
+    caplog.set_level(logging.WARNING)
+    config, client, worker, state, clock = _uploaded_worker(make_config, b"old-scan")
+    path = config.incoming_dir / "SCN_0001.pdf"
+    path.write_bytes(b"new-scan")
+
+    clock.advance(25 * 3600)
+    worker._loop_once()
+
+    assert path.read_bytes() == b"new-scan"
+    assert state.get(_sha(b"old-scan")) is None
+    assert any("name reused by a newer scan" in r.message for r in caplog.records)
+    state.close()
+
+
+def test_retention_cleanup_removes_local_copy_and_its_record(make_config):
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+
+    clock.advance(25 * 3600)
+    worker._loop_once()
+
+    assert not (config.incoming_dir / "SCN_0001.pdf").exists()
+    assert state.get(_sha(b"scan-content")) is None
+    state.close()
+
+
+def test_retention_cleanup_purges_expired_record_whose_file_is_already_gone(make_config):
+    # Rows left behind by an older version's cleanup must not make identical
+    # content scanned later look like an already-handled duplicate.
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+    path = config.incoming_dir / "SCN_0001.pdf"
+    path.unlink()
+
+    clock.advance(25 * 3600)
+    worker._loop_once()
+    assert state.get(_sha(b"scan-content")) is None
+
+    path.write_bytes(b"scan-content")
+    worker._loop_once()
+    worker._loop_once()
+    assert path.exists()
+    assert client.upload_calls == ["SCN_0001.pdf", "SCN_0001.pdf"]
+    state.close()
+
+
+def test_retention_cleanup_keeps_record_when_unlink_fails(make_config, monkeypatch):
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+    clock.advance(25 * 3600)
+
+    def refuse(self):
+        raise PermissionError("read-only file system")
+
+    monkeypatch.setattr("pathlib.Path.unlink", refuse)
+    worker._loop_once()
+    monkeypatch.undo()
+
+    assert (config.incoming_dir / "SCN_0001.pdf").exists()
+    assert state.get(_sha(b"scan-content")).state == "uploaded"  # retried later
+
+    worker._loop_once()
+    assert not (config.incoming_dir / "SCN_0001.pdf").exists()
+    assert state.get(_sha(b"scan-content")) is None
+    state.close()
+
+
+def test_retention_cleanup_survives_failing_record_delete(make_config, monkeypatch, caplog):
+    caplog.set_level(logging.ERROR)
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+    clock.advance(25 * 3600)
+
+    def locked(sha256):
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(state, "delete", locked)
+    worker._loop_once()  # must not raise
+
+    assert any("retention cleanup for file=SCN_0001.pdf" in r.message for r in caplog.records)
+    state.close()
+
+
+def test_retention_cleanup_leaves_file_alone_when_it_cannot_be_hashed(make_config, monkeypatch):
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+    clock.advance(25 * 3600)
+
+    def unreadable(path):
+        raise OSError("input/output error")
+
+    monkeypatch.setattr("scanner_drive_bridge.worker.hash_file", unreadable)
+    worker._loop_once()
+
+    assert (config.incoming_dir / "SCN_0001.pdf").exists()
+    assert state.get(_sha(b"scan-content")).state == "uploaded"
+    state.close()
+
+
+def test_retention_cleanup_error_does_not_break_the_loop(make_config, monkeypatch, caplog):
+    caplog.set_level(logging.ERROR)
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+
+    def broken(cutoff):
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(state, "uploaded_before", broken)
+    clock.advance(25 * 3600)
+    worker._loop_once()
+
+    assert (config.incoming_dir / "SCN_0001.pdf").exists()
+    assert any("local retention cleanup" in r.message for r in caplog.records)
+    state.close()
+
+
+def test_retention_cleanup_keeps_records_while_incoming_volume_is_missing(make_config):
+    import shutil
+
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+    saved = config.incoming_dir.with_name("incoming-saved")
+    shutil.move(str(config.incoming_dir), str(saved))
+    clock.advance(25 * 3600)
+
+    worker._loop_once()
+
+    assert state.get(_sha(b"scan-content")).state == "uploaded"
+    state.close()
+
+
+def test_retention_cleanup_keeps_record_while_identical_copy_under_another_name_remains(make_config):
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+    other = config.incoming_dir / "SCN_0002.pdf"
+    other.write_bytes(b"scan-content")  # identical bytes, different name
+    (config.incoming_dir / "SCN_0003.pdf").write_bytes(b"unrelated-and-longer")  # skipped by size
+    (config.incoming_dir / "subdir").mkdir()  # skipped: not a file
+
+    clock.advance(25 * 3600)
+    worker._loop_once()
+
+    assert not (config.incoming_dir / "SCN_0001.pdf").exists()
+    assert other.exists()
+    assert state.get(_sha(b"scan-content")).state == "uploaded"  # dedup state outlives the first name
+    state.close()
+
+
+def test_retention_cleanup_keeps_record_when_other_files_cannot_be_inspected(make_config, monkeypatch):
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+    (config.incoming_dir / "SCN_0002.pdf").write_bytes(b"scan-content")
+    clock.advance(25 * 3600)
+
+    real_iterdir = type(config.incoming_dir).iterdir
+
+    def flaky_iterdir(self):
+        if self == config.incoming_dir and flaky_iterdir.armed:
+            raise OSError("input/output error")
+        return real_iterdir(self)
+
+    flaky_iterdir.armed = False
+    monkeypatch.setattr(type(config.incoming_dir), "iterdir", flaky_iterdir)
+    # arm only for the cleanup's own listing, after the stability poll ran
+    real_poll = worker._stability.poll
+
+    def poll_then_arm(directory):
+        result = real_poll(directory)
+        flaky_iterdir.armed = True
+        return result
+
+    monkeypatch.setattr(worker._stability, "poll", poll_then_arm)
+    worker._loop_once()
+
+    assert state.get(_sha(b"scan-content")).state == "uploaded"
+    state.close()
+
+
+def test_retention_cleanup_ignores_unrelated_files_when_forgetting_record(make_config):
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+    (config.incoming_dir / "SCN_0002.pdf").write_bytes(b"different-size-content")
+    (config.incoming_dir / "SCN_0003.pdf").write_bytes(b"same-size-xx")  # same length, other bytes
+    (config.incoming_dir / "subdir").mkdir()
+    clock.advance(25 * 3600)
+
+    worker._loop_once()
+
+    assert not (config.incoming_dir / "SCN_0001.pdf").exists()
+    assert state.get(_sha(b"scan-content")) is None
+    state.close()
