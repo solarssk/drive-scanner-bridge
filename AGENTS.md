@@ -35,6 +35,7 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"   # once
 
 - Compose renders without errors: `docker compose config` (needs a `.env`, copy
   `.env.example`).
+- Documentation: `python3 scripts/check_docs.py` (also part of `pytest`).
 - CI lints workflows with `actionlint` and `zizmor` and scans for secrets with `gitleaks`. Run
   `actionlint` and `zizmor .` locally when you touch `.github/`.
 

@@ -1,0 +1,21 @@
+name: Verify standard
+
+# Runs the playbook's own tier check against this repository (Tier 2, declared in AGENTS.md).
+# The call is pinned to a commit, so the playbook cannot change what "passing" means here
+# without a reviewable diff; Dependabot proposes the bump. Without the optional admin token
+# the settings-level checks are skipped and reported as skipped, not failed.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: verify-standard-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    uses: solarssk/playbook/.github/workflows/verify-tier.yml@0f0760fd3cf1eecee43deb2debbaa5a295fc3a8a # v0.2.0

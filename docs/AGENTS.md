@@ -56,6 +56,9 @@ most four or five lines.
 
 ## Check before you commit
 
+- Run `python3 scripts/check_docs.py`. It checks links, anchors, code and Mermaid blocks, dashes,
+  file names, folder READMEs and the settings table, and it also runs in the unit tests.
+- In the pull request, choose one **Documentation impact** option. CI compares it with the diff.
 - Every relative link and `#anchor` resolves. Renaming a heading changes its anchor.
 - Every command works against the current code and file names.
 - The settings table in [configuration.md](configuration.md) matches

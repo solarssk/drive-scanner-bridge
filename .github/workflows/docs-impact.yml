@@ -1,0 +1,32 @@
+name: Documentation impact
+
+# Kept out of ci.yml on purpose. The declaration lives in the pull request description, so
+# this check has to run again when the description is edited (`edited`). A plain
+# `pull_request` trigger only covers opened, synchronize and reopened, and would leave a
+# corrected checkbox failing until the next push. ci.yml has no reason to rerun everything on
+# a description edit.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  docs-impact:
+    name: Documentation impact declaration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Check the declaration against the diff
+        run: python3 scripts/check_pr_docs_impact.py
