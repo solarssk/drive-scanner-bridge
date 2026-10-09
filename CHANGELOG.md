@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-10-09
+
+The repository now meets the playbook's Tier 2 (checked with its own `verify-tier`): workflows are
+linted, the commits of every run are scanned for secrets, each release carries an SBOM, and the
+documentation is split by topic, checked automatically and written for agents too. The runtime
+code is identical to 0.1.4 (only comments and a docstring changed, to point at the new pages).
+
 ### Added
 
 - `AGENTS.md` (commands, code and workflow rules, and what an agent must not do) and a

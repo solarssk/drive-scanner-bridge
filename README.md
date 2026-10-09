@@ -4,6 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/solarssk/drive-scanner-bridge)](https://github.com/solarssk/drive-scanner-bridge/releases)
 [![Platforms](https://img.shields.io/badge/platforms-amd64%20%7C%20arm64-blue)](docs/deployment.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/solarssk/drive-scanner-bridge/badge)](https://securityscorecards.dev/viewer/?uri=github.com/solarssk/drive-scanner-bridge)
 
 drive-scanner-bridge uploads scans from a legacy SMB1 network scanner to Synology Drive
 through Drive's own upload API. It exists because, on the NAS it was built for, Synology
@@ -76,7 +77,7 @@ git clone https://github.com/solarssk/drive-scanner-bridge.git
 cd drive-scanner-bridge
 cp .env.example .env          # set SYNOLOGY_HOST, SMB1_STATIC_IP, SMB_PRT01_PASSWORD
 printf '%s' 'the DSM password' > secrets/synology_password
-docker compose up -d          # pulls ghcr.io/solarssk/drive-scanner-bridge:0.1.4
+docker compose up -d          # pulls ghcr.io/solarssk/drive-scanner-bridge:0.1.5
 docker compose logs -f drive-uploader
 ```
 
