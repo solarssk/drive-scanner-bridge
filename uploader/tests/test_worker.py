@@ -389,3 +389,100 @@ def test_destination_not_found_logs_warning_but_does_not_crash(make_config, capl
 
     assert any("was not found" in r.message for r in caplog.records)
     state.close()
+
+
+def test_local_retention_does_not_delete_new_file_reusing_expired_filename(make_config):
+    # Regression test: the scanner reuses filenames across genuinely
+    # different scans (see state.py). If an old, already-expired "uploaded"
+    # record shares a filename with a brand-new, not-yet-uploaded scan,
+    # retention cleanup must never delete the new file just because *a*
+    # file exists at that path -- it must verify the content hash first.
+    config = make_config(delete_after_upload=False, local_retention_hours=24.0)
+    (config.incoming_dir / "SCN_0001.pdf").write_bytes(b"old-scan-content")
+    client = FakeSynologyClient()
+    worker, state, clock = _build_worker(config, client)
+
+    worker.startup()
+    worker._loop_once()
+    worker._loop_once()
+    assert client.upload_calls == ["SCN_0001.pdf"]
+    old_sha = _sha(b"old-scan-content")
+    assert state.get(old_sha).state == "uploaded"
+
+    clock.advance(25 * 3600)  # past the 24h retention window
+    worker._loop_once()
+    assert not (config.incoming_dir / "SCN_0001.pdf").exists()  # old copy cleaned up
+
+    # scanner reuses the same filename for a brand-new, different scan
+    (config.incoming_dir / "SCN_0001.pdf").write_bytes(b"brand-new-scan-content")
+    worker._loop_once()  # first sighting only -- not yet stability-confirmed
+
+    assert (config.incoming_dir / "SCN_0001.pdf").exists(), (
+        "retention cleanup must not delete a file just because it shares a "
+        "name with an old, expired upload record -- it must verify content first"
+    )
+    assert client.upload_calls == ["SCN_0001.pdf"]  # no new upload attempted yet
+    assert state.get(old_sha) is None  # stale record discarded, not left dangling
+
+    worker._loop_once()  # second unchanged poll satisfies stability_checks=2
+
+    new_sha = _sha(b"brand-new-scan-content")
+    assert state.get(new_sha).state == "uploaded"
+    assert client.upload_calls == ["SCN_0001.pdf", "SCN_0001.pdf"]
+    state.close()
+
+
+def test_retention_cleanup_never_confuses_files_of_different_extensions(make_config):
+    # The scanner produces different formats depending on job settings (PDF,
+    # JPEG, and others seen in practice). Filenames are compared as exact
+    # strings including the extension, so "SCN_0001.pdf" and "SCN_0001.jpg"
+    # are unrelated files from the first byte onward -- retention cleanup
+    # for one must never touch the other, even though the numeric part
+    # scanners use to build these names is identical.
+    config = make_config(delete_after_upload=False, local_retention_hours=24.0)
+    (config.incoming_dir / "SCN_0001.pdf").write_bytes(b"old-pdf-content")
+    client = FakeSynologyClient()
+    worker, state, clock = _build_worker(config, client)
+
+    worker.startup()
+    worker._loop_once()
+    worker._loop_once()
+    assert client.upload_calls == ["SCN_0001.pdf"]
+
+    clock.advance(25 * 3600)  # SCN_0001.pdf is now past its retention window
+
+    # a different scan, same numeric name but a different format, lands
+    # right as the old .pdf record expires
+    (config.incoming_dir / "SCN_0001.jpg").write_bytes(b"new-jpg-content")
+    worker._loop_once()
+    worker._loop_once()
+
+    assert not (config.incoming_dir / "SCN_0001.pdf").exists()  # old .pdf cleaned up on schedule
+    assert (config.incoming_dir / "SCN_0001.jpg").exists()  # new .jpg untouched and kept
+    assert client.upload_calls == ["SCN_0001.pdf", "SCN_0001.jpg"]
+    assert state.get(_sha(b"new-jpg-content")).state == "uploaded"
+    state.close()
+
+
+def test_rescan_of_identical_content_after_retention_removal_is_uploaded(make_config):
+    # Regression: after retention removed the kept copy, a new scan with the
+    # same name and bytes matched the stale record and was deleted on arrival.
+    config = make_config(delete_after_upload=False, local_retention_hours=24.0)
+    path = config.incoming_dir / "SCN_0001.pdf"
+    path.write_bytes(b"scan-content")
+    client = FakeSynologyClient()
+    worker, state, clock = _build_worker(config, client)
+
+    worker.startup()
+    worker._loop_once()
+    worker._loop_once()
+    clock.advance(25 * 3600)
+    worker._loop_once()
+    assert not path.exists()
+
+    path.write_bytes(b"scan-content")
+    worker._loop_once()
+    assert path.exists()
+    worker._loop_once()
+    assert client.upload_calls == ["SCN_0001.pdf", "SCN_0001.pdf"]
+    state.close()

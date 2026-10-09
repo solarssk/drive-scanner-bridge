@@ -193,7 +193,30 @@ class Worker:
             path = self._config.incoming_dir / record.original_name
             if not path.exists():
                 continue
+            try:
+                digest, _size = hash_file(path)
+            except OSError:
+                continue
+            if digest != record.sha256:
+                # The scanner reuses filenames across genuinely different
+                # scans (see state.py). This name now belongs to a newer,
+                # not-yet-uploaded file: the expired record no longer
+                # describes what is on disk, so discard the record but never
+                # touch the file itself.
+                logger.warning(
+                    "retention cleanup skipped file=%s: current content no longer matches "
+                    "the uploaded record it was kept for (name reused by a newer scan), "
+                    "discarding the stale record instead of touching the file",
+                    record.original_name,
+                )
+                self._state.delete(record.sha256)
+                continue
             self._safe_remove(path)
+            # The local copy is gone, so the record has nothing left to
+            # protect. Keeping it would make a later scan of identical content
+            # (e.g. re-scanning a page deleted from Drive) match this stale
+            # record and be removed on arrival, before it was ever uploaded.
+            self._state.delete(record.sha256)
             logger.info(
                 "removed local copy past retention window (%.1fh) file=%s",
                 retention_hours, record.original_name,
