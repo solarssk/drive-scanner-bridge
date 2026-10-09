@@ -70,7 +70,7 @@ checks work, is described in [maintenance.md](maintenance.md#python-dependencies
 ## Build the image locally
 
 ```bash
-docker build -t ghcr.io/solarssk/drive-scanner-bridge:0.1.4 ./uploader
+docker build -t ghcr.io/solarssk/drive-scanner-bridge:0.1.5 ./uploader
 ```
 
 Use the same name as the `image:` line in `docker-compose.yml` so that Compose uses your
