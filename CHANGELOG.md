@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- CI lints the workflows with `actionlint` and `zizmor` and scans the commits of each run for
+  secrets with `gitleaks` (both tools pinned, downloaded binaries checksum-verified). Every
+  checkout sets `persist-credentials: false`, and every Dependabot entry has a 7-day
+  `cooldown`. This closes the gaps the playbook's `verify-tier` reported at Tier 2.
 - The README was about 600 lines and held everything. It is now a short front page (what the
   project is and is not, quick start, the most common settings, security at a glance) that
   follows the playbook README standard. The rest moved, rewritten for clarity, into

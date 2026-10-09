@@ -5,7 +5,8 @@ Rules for changing workflows, templates and repository automation. They add to t
 
 ## Before you commit
 
-- Lint every workflow with `actionlint` (it includes `shellcheck`). A YAML parser is not
+- Lint every workflow with `actionlint` (it includes `shellcheck`) and `zizmor .` (safety:
+  template injection, permissions, unpinned actions). CI runs both. A YAML parser is not
   enough: GitHub rejects some expressions that are valid YAML.
 - A workflow change that can affect a required check name needs a matching change to
   branch protection. Tell the owner; do not change the setting yourself.

@@ -8,7 +8,7 @@ workflows are in [AGENTS.md](../AGENTS.md).
 
 | Workflow | Runs on | Purpose | Blocks a merge? |
 |---|---|---|---|
-| [`ci.yml`](ci.yml) | push to `main`, pull requests, manual | Unit tests, lint, types, image build with a CRITICAL scan, compose check, Sonar and Codecov | Yes: `Unit tests`, `Build uploader image`, `Validate docker-compose.yml` |
+| [`ci.yml`](ci.yml) | push to `main`, pull requests, manual | Unit tests, lint, types, image build with a CRITICAL scan, compose check, workflow lint, secret scan, Sonar and Codecov | Yes: `Unit tests`, `Build uploader image`, `Validate docker-compose.yml`. `Lint workflows` and `Secret scan` report, but are not required. |
 | [`codeql.yml`](codeql.yml) | push, pull requests, Mondays 06:30 UTC | CodeQL analysis of Python and of the workflows | No |
 | [`release-image.yml`](release-image.yml) | pull requests that change the Dockerfile, the lock, `pyproject.toml` or the workflow (dry run); dispatch from `release.yml`; manual | Builds both platforms, scans each, pushes to ghcr.io only when publishing | No |
 | [`release.yml`](release.yml) | push to `main`, manual (from `main` only) | Tag, GitHub Release, image, milestone | Not applicable |
@@ -40,3 +40,5 @@ flowchart LR
 | `code-quality` (`Code quality (Sonar + Codecov)`) | Uploads coverage and test results to Codecov, runs the SonarCloud scan. Skips cleanly without tokens. Report-only. |
 | `build-image` (`Build uploader image`) | Builds the image and runs Trivy, failing on CRITICAL findings that have a fix |
 | `compose-lint` (`Validate docker-compose.yml`) | Renders the compose file with placeholder values |
+| `lint-workflows` (`Lint workflows (actionlint, zizmor)`) | `actionlint` for correctness (with `shellcheck`), `zizmor` for safety. Both are pinned; `actionlint` is checksum-verified. |
+| `secret-scan` (`Secret scan (gitleaks)`) | `gitleaks`, scoped to the commits the run introduces, checksum-verified |
