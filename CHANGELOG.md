@@ -20,6 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Labels follow the playbook: `bug`, `enhancement` and `documentation` became `type: bug`,
+  `type: feature` and `type: docs` (renamed, so existing issues and PRs keep them), and
+  `type: chore` was added. The bug report form applies `type: bug`.
 - The pull request template follows the playbook (Description, How to test, What stays, a
   **Documentation impact** choice, Checklist), and `docs-impact.yml` checks the choice against the
   files the PR changes. `scripts/check_docs.py` (also a unit test) checks links, anchors, code and

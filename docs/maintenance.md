@@ -67,7 +67,7 @@ Keep this table current when an item changes status.
 | Topic | Rule |
 |---|---|
 | Issues and PRs | Each has an **assignee**, at least one **label** and a **milestone**. Dependabot PRs are exempt. |
-| Labels in use | `security`, `ci`, `governance`, `dependencies`, `github_actions`, `documentation`, `bug`, `enhancement` |
+| Labels in use | The playbook's `type:` labels (`type: bug`, `type: feature`, `type: docs`, `type: chore`), plus `security`, `ci`, `governance`, and the two Dependabot applies itself (`dependencies`, `github_actions`) |
 | Branch names | `<type>/<short-description>`, type is `fix`, `feature`, `maintenance`, `security`, `docs` or `release` |
 | Milestones | One per release, named exactly like the version (`0.1.4`). Closed automatically when the release is published. |
 | Merging | The owner merges. Required checks apply to admins too, with no bypass. |

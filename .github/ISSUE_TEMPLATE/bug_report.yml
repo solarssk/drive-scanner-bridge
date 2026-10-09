@@ -1,6 +1,6 @@
 name: Bug report
 description: Something in the bridge does not behave as documented
-labels: [bug]
+labels: ["type: bug"]
 assignees: [solarssk]
 body:
   - type: markdown
