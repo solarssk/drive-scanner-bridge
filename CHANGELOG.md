@@ -30,8 +30,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   era (the project scans with Trivy); a "build context" that compose no longer has; comments that
   pointed at a SECURITY.md section that does not exist; and the list of PR triggers of the image
   dry run. The released milestones are no longer repeated in the roadmap list.
-- Inert `# noqa: BLE001` markers (the rule is not enabled), an unused counter in a test fake, and
-  an unused `caplog` parameter that now asserts the warning it was meant to check.
+- An unused counter in a test fake, and an unused `caplog` parameter that now asserts the warning
+  it was meant to check. A docstring in `worker.py` no longer claims that startup reconciliation
+  cleans up leftover local files (it does not; the next stability poll does).
 - The unit-test job no longer checks out the full git history, which nothing in it uses.
 - A `Publish image` run started by hand from `main` stamped `org.opencontainers.image.revision`
   with main's tip instead of the commit it built (as happened to 0.1.1). The label now records
