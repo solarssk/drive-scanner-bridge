@@ -11,8 +11,7 @@ Idempotency strategy (see README for the full write-up):
      means the upload did not happen.
   4. A file is only deleted locally after its state is durably committed
      to `uploaded` in SQLite. A crash between that commit and the delete
-     leaves a harmless leftover local file, which startup reconciliation
-     or the next stability poll cleans up (see `_handle_new_stable_file`'s
+     leaves a harmless leftover local file, which the next stability poll cleans up (see `_handle_new_stable_file`'s
      duplicate-content branch) without ever re-uploading it.
 """
 from __future__ import annotations

@@ -111,6 +111,9 @@ services:
       # 2026-08-22_SCN_0001.pdf, for easier browsing in the Team Folder.
       TIMESTAMP_UPLOAD_FILENAME: ${TIMESTAMP_UPLOAD_FILENAME:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Healthcheck thresholds; the defaults equal the ones built into the code.
+      HEALTHCHECK_MAX_LOOP_AGE_SECONDS: ${HEALTHCHECK_MAX_LOOP_AGE_SECONDS:-120}
+      HEALTHCHECK_MAX_BACKLOG_AGE_SECONDS: ${HEALTHCHECK_MAX_BACKLOG_AGE_SECONDS:-21600}
 
     volumes:
       - scanner_incoming:/incoming

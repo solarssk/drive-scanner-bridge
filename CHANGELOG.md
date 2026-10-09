@@ -19,8 +19,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - the documented recovery for a failed image run now separates transient causes (run
     `Publish image` again) from findings in the tagged files (ship the next patch version).
 
+- `docker-compose.yml` now forwards `HEALTHCHECK_MAX_LOOP_AGE_SECONDS` and
+  `HEALTHCHECK_MAX_BACKLOG_AGE_SECONDS` from `.env` (the README documented them, but only the
+  built-in defaults could take effect). The defaults are unchanged.
+
 ### Fixed
 
+- Stale or wrong documentation corrected: a heartbeat command that needs `cat`, which the
+  distroless image does not have; a scan command and a frozen scan result from the Docker Scout
+  era (the project scans with Trivy); a "build context" that compose no longer has; comments that
+  pointed at a SECURITY.md section that does not exist; and the list of PR triggers of the image
+  dry run. The released milestones are no longer repeated in the roadmap list.
+- An unused counter in a test fake, and an unused `caplog` parameter that now asserts the warning
+  it was meant to check. A docstring in `worker.py` no longer claims that startup reconciliation
+  cleans up leftover local files (it does not; the next stability poll does).
+- The unit-test job no longer checks out the full git history, which nothing in it uses.
 - A `Publish image` run started by hand from `main` stamped `org.opencontainers.image.revision`
   with main's tip instead of the commit it built (as happened to 0.1.1). The label now records
   the checked-out commit.

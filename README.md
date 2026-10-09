@@ -366,8 +366,11 @@ tests guarding it.
 DSM-wide two-factor authentication is enforced, exclude `prt01` from it (DSM
 Control Panel -> User -> the account -> "Allowed to skip 2-factor
 authentication"), rather than trying to feed it a rotating TOTP code. A
-static `SYNOLOGY_OTP_CODE` is supported for completeness but is not a
-substitute for a real TOTP generator and will not work for ongoing use.
+static `SYNOLOGY_OTP_CODE` is supported by the service for completeness (the
+shipped compose file does not forward it from `.env`; pass it ad hoc, e.g.
+`docker compose exec -e SYNOLOGY_OTP_CODE=123456 drive-uploader python -m
+scanner_drive_bridge.test_connection`), but it is not a substitute for a real
+TOTP generator and will not work for ongoing use.
 
 ## Security
 
@@ -379,39 +382,29 @@ socket, not on `smb1_network` (least privilege -- it only needs outbound
 HTTPS to the NAS's own DSM port). Credential handling is covered under
 [Secrets and credentials](#secrets-and-credentials) above.
 
-**Image vulnerability scan** (`docker scout cves`): a `python:3.12-slim`
-single-stage image was the initial choice, and scanned at 2 Critical / 2
-High / 11 Medium / 29 Low / 5 Unspecified -- the usual long tail of Debian
-base-OS package CVEs (glibc, systemd, coreutils, `perl-base`, etc.), almost
-none of it reachable here (no shell exposed, no untrusted local multi-user
-input, no exposed port). Rather than accept that as "good enough given the
-threat model", the Dockerfile is now a multi-stage build: dependencies are
-installed in a `python:3.13-slim` builder stage, and the final image is
+**Image build**: the Dockerfile is a multi-stage build. Dependencies are installed
+in a `python:3.13-slim` builder stage, and the final image is
 [Google's distroless `python3-debian13`](https://github.com/GoogleContainerTools/distroless)
-base, which ships nothing beyond the Python 3.13 runtime itself -- no
-shell, no package manager, no coreutils, no `perl`. That takes the scan to
-**0 Critical / 0 High / 0 Medium / 0 Low**, and the image shrank from ~46 MB
-to ~20 MB. The builder stage deliberately matches distroless's Python 3.13
-so `charset_normalizer`'s compiled extension (a `requests` transitive
-dependency) stays ABI-compatible instead of silently falling back to its
-pure-Python path. `pip-audit` against the actual application dependencies
-(`requests` and its transitive deps) independently reported no known
-vulnerabilities. Every change here was re-verified with the same full
-functional smoke test (non-root UID/GID resolution, all imports, the
-detect/stabilize/upload/retry log sequence, healthcheck) each step of the
-way -- see `uploader/Dockerfile` for the exact stages.
+base, which ships nothing beyond the Python 3.13 runtime itself -- no shell, no
+package manager, no coreutils, no `perl` -- so there are no unused OS packages to
+patch. The builder stage deliberately matches distroless's Python 3.13 so
+`charset_normalizer`'s compiled extension (a `requests` transitive dependency)
+stays ABI-compatible instead of silently falling back to its pure-Python path.
+See `uploader/Dockerfile` for the exact stages.
 
-Re-run the scan yourself after any base image bump:
+Scan the published image yourself after any base image bump (same scanner and
+flags as CI, no account needed):
 ```bash
-docker scout cves ghcr.io/solarssk/drive-scanner-bridge:0.1.3
+trivy image --severity CRITICAL,HIGH --ignore-unfixed ghcr.io/solarssk/drive-scanner-bridge:0.1.3
 ```
 
-The 0/0/0/0 result above reflects the state at the time the distroless
-migration was made, not a permanent guarantee -- new CVEs get published
+A scan result is not a permanent guarantee -- new CVEs get published
 against already-released package versions, and `distroless/python3-debian13`
 carries whatever OS-level shared libraries (glibc, libssl, libsqlite3,
 zlib, etc.) Python's own stdlib links against, each with its own CVE
-history. This is now checked continuously instead of manually: `ci.yml`'s
+history. A scan will also list Debian findings that have no fix yet; the gates
+below ignore those (`ignore-unfixed`), since nothing in this repo can fix them.
+This is checked continuously: `ci.yml`'s
 `build-image` job fails a PR on any CRITICAL finding with an available fix,
 and `.github/workflows/weekly-image-scan.yml` runs the fuller CRITICAL+HIGH
 picture weekly (same cadence as Dependabot) without blocking merges --
@@ -427,7 +420,7 @@ stops the publish.
 The base moved from `python3-debian12` to `python3-debian13` in 0.1.1: the
 debian12 image had not picked up Debian's fixes for weeks (25 fixable HIGH
 findings in libexpat1, krb5, libpython3.11 and libssl3, red in the weekly scan
-from 2026-09-14), while the debian13 image scanned clean.
+from 2026-09-14), while the debian13 image had no fixable CRITICAL or HIGH findings.
 
 ## Scanner flow (unchanged)
 
@@ -475,7 +468,7 @@ thing that changed underneath it is where `/share` is backed by
 - **`drive-uploader` can't reach the NAS.** It intentionally is not on
   `smb1_network`. If your Docker network setup doesn't let the default
   bridge network reach the NAS's own DSM port, add it to `smb1_network`
-  too (uncomment/add a `networks: - smb1_network` entry for `drive-uploader`
+  too (add a `networks: - smb1_network` entry for `drive-uploader`
   in `docker-compose.yml`) rather than opening host networking.
 - **Login works via browser but the service reports `error_code 103` or
   similar.** Check the log line `discovered Synology API versions: ...`
@@ -505,9 +498,10 @@ thing that changed underneath it is where `/share` is backed by
   (default 120s -- suggests the process is stuck, not just that Synology is
   briefly unreachable), or (b) the oldest pending file exceeding
   `HEALTHCHECK_MAX_BACKLOG_AGE_SECONDS` (default 6h -- a real, long-lived
-  backlog). Check `docker compose logs drive-uploader` and
-  `docker compose exec drive-uploader cat /data/heartbeat.json` for
-  `last_error`.
+  backlog). Check `docker compose logs drive-uploader` and the heartbeat's
+  `last_error`, read with
+  `docker compose exec drive-uploader python3 -c "print(open('/data/heartbeat.json').read())"`
+  (the image has no `cat`).
 
 ## Upgrading
 

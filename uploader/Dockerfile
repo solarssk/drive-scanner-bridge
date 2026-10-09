@@ -1,8 +1,9 @@
 # Multi-stage build: the final image is Google's "distroless" Python base,
 # which ships no shell, no package manager, and no OS packages beyond the
-# Python runtime itself -- a `docker scout cves` scan of it comes back at
-# 0 Critical/High/Medium/Low, vs. dozens found in a python:3.12-slim image
-# (mostly unused OS packages like perl that this service never touches).
+# Python runtime itself, so it lacks the unused OS packages (perl, coreutils,
+# a shell, ...) that a python:3.13-slim image carries and this service never
+# touches. CI scans the built image with Trivy (ci.yml, weekly-image-scan.yml,
+# release-image.yml); the base is not CVE-free, those scans are the check.
 # See README "Security".
 #
 # The builder stage uses python:3.13-slim specifically to match the Python
