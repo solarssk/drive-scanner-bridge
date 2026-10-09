@@ -70,7 +70,10 @@ container image on ghcr.io (`ghcr.io/solarssk/drive-scanner-bridge:<version>`, `
    the README references (`grep -rn "<old version>"`).
 3. `CHANGELOG.md`: turn `[Unreleased]` into `## [x.y.z] - YYYY-MM-DD` (that exact heading
    format; the release notes are built from it) and add a fresh empty `[Unreleased]`.
-4. Open a `release/x.y.z` PR. The owner merges it once CI is green.
+4. Open a `release/x.y.z` PR. The owner merges it once CI is green, **including the `Build,
+   scan, publish` dry run** (it runs because a release PR changes `uploader/pyproject.toml`; it
+   is not a required check, so look at it). It builds and scans both platforms exactly as the
+   release will, so a fixable CRITICAL/HIGH finding shows up before the tag exists.
 5. On the merge to `main` the `Release` workflow compares the version before and after the
    push and, if it moved: checks that `__version__`, the compose image tag and the CHANGELOG
    heading all agree (a mismatch fails the run and releases nothing), creates the tag
@@ -83,19 +86,34 @@ container image on ghcr.io (`ghcr.io/solarssk/drive-scanner-bridge:<version>`, `
    and only then pushes. Check that the `Release` run is green and that the tag appears under
    `github.com/solarssk?tab=packages`.
 
-If the image run fails (a scan finding with a fix, a build error), the `Release` run goes red
-and the milestone stays open. The tag and the GitHub Release already exist at that point but
-the image does not. Fix the cause, run `Publish image` by hand for that version (a failed run
-publishes nothing, so it is not blocked as "already published"), then close the milestone.
+If the image run fails, the `Release` run goes red and the milestone stays open. The tag and
+the GitHub Release already exist at that point but the image does not. Nothing vulnerable is
+ever pushed. Open the failed `Publish image` run and decide by the cause:
+
+- **Transient** (registry, network, runner, scanner database download): run `Publish image`
+  by hand for that version (a failed run publishes nothing, so it is not blocked as "already
+  published"), then close the milestone.
+- **A scan finding or build error in the tagged files** (a fixable CVE in a pinned base image
+  or a locked package): running it again rebuilds the same tag and fails the same way, because
+  the fix is a new commit and a tag never moves. Fix it on `main` and ship it as the **next
+  patch version**; edit the Release of the broken one to say it has no image and point to the
+  new version. Only if nobody can have used the tag yet, you may instead delete the tag and the
+  Release, merge the fix, and run `Release` by hand from `main`, which tags the fix commit.
 
 Recovery and manual use:
 
-- `Release` can be run by hand (Actions -> Release -> Run workflow). It repeats the steps
-  for the version currently in `pyproject.toml`; each step is safe to repeat. It only works
-  while `main` is still at the release commit: a tag that sits on a different commit fails
-  the run on purpose, rather than attaching a release to the wrong code.
+- `Release` can be run by hand (Actions -> Release -> Run workflow, **from `main`**; it
+  refuses any other branch). It repeats the steps for the version currently in `pyproject.toml`;
+  each step is safe to repeat. It only works while `main` is still at the release commit: a tag
+  that sits on a different commit fails the run on purpose, rather than attaching a release
+  to the wrong code.
+- Merging a fix after a *failed* `Release` run (for example a version that disagreed between
+  files) does **not** release anything by itself: that push does not move the version. The
+  run says so in a warning; run `Release` by hand from `main` once the fix is merged.
 - `Publish image` can be run by hand with a version and `publish` ticked, for a tag that
-  exists but has no image. It never overwrites a version that is already on ghcr.io.
+  exists but has no image. It always builds that tag's files, whichever branch it is started
+  from, and the image's `revision` label records the commit it built. It never overwrites a
+  version that is already on ghcr.io.
 - Do not push release tags by hand: the automation owns them. A hand-pushed tag still
   publishes an image (fallback) but gets no Release and no milestone closing.
 

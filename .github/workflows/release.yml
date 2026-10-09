@@ -14,8 +14,10 @@ name: Release
 # `gh release create` tags with GITHUB_TOKEN, and tag pushes made with GITHUB_TOKEN do not
 # start other workflows, so release-image.yml is dispatched explicitly below.
 #
-# Run it by hand (workflow_dispatch) to recover: it re-runs the steps for the version
-# currently in pyproject.toml, and every step is safe to repeat.
+# Run it by hand (workflow_dispatch, from main only) to recover: it re-runs the steps for
+# the version currently in pyproject.toml, and every step is safe to repeat. Merging a fix
+# after a failed release run does not release anything by itself, because the version did
+# not move in that push.
 on:
   push:
     branches: [main]
@@ -40,6 +42,14 @@ jobs:
       actions: write # dispatch release-image.yml
       issues: write # the Milestones API lives under Issues, not Contents
     steps:
+      # A push is always on main (see `on`); only a manual run can start from another branch,
+      # and that would tag and publish code that was never merged.
+      - name: Only release from main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Run Release from main (Use workflow from: main). A release from another branch would tag and publish unmerged code." >&2
+          exit 1
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -88,7 +98,11 @@ jobs:
             ATTEMPT=true
           fi
           if [ "$ATTEMPT" = "false" ]; then
-            echo "Nothing to release for ${NEW} yet, skipping."
+            if git rev-parse -q --verify "refs/tags/${NEW}" >/dev/null; then
+              echo "Nothing to release: ${NEW} is already tagged."
+            else
+              echo "::warning::${NEW} has no tag yet and this push did not move the version. If an earlier Release run for it failed, fix the cause on main and run Release by hand from main; merging the fix alone releases nothing."
+            fi
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -183,7 +197,7 @@ jobs:
             for _ in $(seq 1 45); do
               RUN_ID="$(gh run list --workflow release-image.yml --event workflow_dispatch --limit 30 \
                 --json databaseId,displayTitle \
-                --jq ".[] | select(.displayTitle | endswith(\"[${REQUEST_ID}]\")) | .databaseId" | head -n 1)"
+                --jq ".[] | select(.displayTitle | endswith(\"[${REQUEST_ID}]\")) | .databaseId" | head -n 1 || true)"
               [ -n "$RUN_ID" ] && break
               sleep 4
             done
@@ -197,12 +211,18 @@ jobs:
           STATUS=""
           CONCLUSION=""
           for _ in $(seq 1 240); do
-            read -r STATUS CONCLUSION < <(gh run view "$RUN_ID" --json status,conclusion --jq '"\(.status) \(.conclusion)"')
-            [ "$STATUS" = "completed" ] && break
+            # One failed API call (502, rate limit) must not end the wait: the image run goes on
+            # regardless, so give up on a poll only, not on the run.
+            if RESULT="$(gh run view "$RUN_ID" --json status,conclusion --jq '"\(.status) \(.conclusion)"')"; then
+              read -r STATUS CONCLUSION <<< "$RESULT"
+              [ "$STATUS" = "completed" ] && break
+            else
+              echo "Could not read the status of the image run, retrying."
+            fi
             sleep 15
           done
           if [ "$STATUS" != "completed" ] || [ "$CONCLUSION" != "success" ]; then
-            echo "::error::The image run for ${VERSION} did not succeed (status=${STATUS}, conclusion=${CONCLUSION}): ${URL}. The tag and Release exist, but the image does not; fix the cause, run 'Publish image' by hand for ${VERSION}, then close the milestone." >&2
+            echo "::error::The image run for ${VERSION} did not succeed (status=${STATUS}, conclusion=${CONCLUSION}): ${URL}. The tag and Release exist, but the image does not. If the cause was transient (registry, network, runner), run 'Publish image' by hand for ${VERSION}, then close the milestone. If it is a scan finding or build error in the tagged files, running it again fails the same way: fix it on main and ship it as the next patch version (docs/MAINTENANCE.md, Release process)." >&2
             exit 1
           fi
           echo "Image published: ${URL}"
