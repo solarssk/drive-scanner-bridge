@@ -39,9 +39,11 @@ SonarCloud and Codecov are Tier 3 items that were added deliberately.
 | 1 | Python dependencies hash-locked | ✅ `requirements.txt` |
 | 1 | SECURITY.md, one structured issue template | ✅ |
 | 2 | Dependency audit (`pip-audit`) | ✅ |
-| 2 | Secret scanning | ✅ GitHub secret scanning and push protection |
+| 1 | Secret scan in CI | ✅ `gitleaks`, scoped to the run's commits |
+| 2 | Platform secret scanning | ✅ GitHub secret scanning and push protection |
 | 2 | SAST (CodeQL) on PR and weekly | ✅ |
-| 2 | Dependabot for every ecosystem in use (pip, actions, docker) | ✅ |
+| 2 | Workflows linted in CI with actionlint and zizmor | ✅ job `lint-workflows` |
+| 2 | Dependabot for every ecosystem in use, each with a cooldown | ✅ pip, github-actions, docker |
 | 2 | Blocking container scan | ✅ see [Container scanning](#container-scanning) |
 | 2 | `concurrency:` group in every workflow | ✅ |
 | 2 | Release automation (tag, Release, image, milestone) | ✅ `release.yml` |
@@ -91,6 +93,11 @@ requiring them would leave those pull requests blocked for good.
 
 - Updates are weekly and grouped (one PR per ecosystem per week). The owner merges them
   by hand.
+- Every entry has a `cooldown` of 7 days, so a version published minutes ago is not proposed
+  before it has had time to be pulled if it was compromised. Security updates ignore it.
+- `docker-compose.yml` is not watched on purpose: its only third-party image is
+  `dperson/samba:latest`, a floating tag Dependabot cannot track, and 0.2.0 removes that
+  container.
 - Dependabot PRs do **not** receive repository Actions secrets, so the `Code quality` job
   skips its Sonar and Codecov steps. Those are report-only, so the PR is mergeable once the
   three required checks are green. Nothing needs to be added to the Dependabot secrets store.

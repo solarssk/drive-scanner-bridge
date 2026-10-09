@@ -24,6 +24,8 @@ jobs:
         working-directory: uploader
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
@@ -74,6 +76,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: coverage-report
@@ -113,6 +116,8 @@ jobs:
     needs: test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -136,11 +141,88 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
 
+  # Correctness (actionlint, with shellcheck on every run: block) and safety (zizmor: template
+  # injection, excessive permissions, unpinned actions, Dependabot without a cooldown). Neither
+  # covers the other. Both tools are pinned, and actionlint is verified against the checksum
+  # of its own release before it runs.
+  lint-workflows:
+    name: Lint workflows (actionlint, zizmor)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install actionlint (checksum-verified)
+        env:
+          ACTIONLINT_VERSION: "1.7.12"
+          # From the release's own actionlint_<version>_checksums.txt. Update it with the version.
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          set -euo pipefail
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl --proto '=https' --tlsv1.2 -sSfL -o "$archive" "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${archive}"
+          echo "${ACTIONLINT_SHA256}  ${archive}" | sha256sum --check --strict
+          tar -xzf "$archive" actionlint
+          echo "$PWD" >> "$GITHUB_PATH"
+      - name: actionlint
+        run: actionlint .github/workflows/*.yml
+      - uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+        with:
+          version: v1.30.1
+          advanced-security: false
+          annotations: true
+
+  # Scoped to the commits this run introduces. gitleaks' default (`git log --all`) scans every
+  # branch's whole history on every run and fails a PR over an old commit it did not touch.
+  # Complements GitHub's own secret scanning and push protection; neither replaces the other.
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install gitleaks (checksum-verified)
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+          # From the release's own gitleaks_<version>_checksums.txt. Update it with the version.
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          set -euo pipefail
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl --proto '=https' --tlsv1.2 -sSfL -o "$archive" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+          echo "${GITLEAKS_SHA256}  ${archive}" | sha256sum --check --strict
+          tar -xzf "$archive" gitleaks
+          echo "$PWD" >> "$GITHUB_PATH"
+      - name: Compute scan range
+        id: range
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            echo "range=origin/${BASE_REF}..HEAD" >> "$GITHUB_OUTPUT"
+          elif [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            echo "range=${BEFORE_SHA}..${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+          else
+            echo "range=-1" >> "$GITHUB_OUTPUT"
+          fi
+      - name: gitleaks (scoped to this run's commits)
+        env:
+          SCAN_RANGE: ${{ steps.range.outputs.range }}
+        run: gitleaks detect --source . --log-opts="$SCAN_RANGE" --exit-code 1
+
   compose-lint:
     name: Validate docker-compose.yml
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Render compose config with placeholder values
         run: |
           cat > .env <<'EOF'
