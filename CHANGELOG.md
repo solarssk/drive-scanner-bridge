@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Release automation hardened after an independent review of its first real run (0.1.3, which
+  was not affected):
+  - one failed API call while waiting for the image run no longer aborts the wait;
+  - `Release` run by hand refuses any branch except `main`;
+  - a push that does not move the version says whether that version is already tagged, and warns
+    when it is not (a fix merged after a failed release run releases nothing by itself);
+  - the `Build, scan, publish` dry run now also runs on release PRs, so a fixable CRITICAL/HIGH
+    finding shows up before the tag exists;
+  - the documented recovery for a failed image run now separates transient causes (run
+    `Publish image` again) from findings in the tagged files (ship the next patch version).
+
+### Fixed
+
+- A `Publish image` run started by hand from `main` stamped `org.opencontainers.image.revision`
+  with main's tip instead of the commit it built (as happened to 0.1.1). The label now records
+  the checked-out commit.
+
 ## [0.1.3] - 2026-10-09
 
 Releases are now automatic. The runtime code is identical to 0.1.2.
