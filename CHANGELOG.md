@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-10-09
+
+The last release of the 0.1.x line, which kept the two-container setup. It only fixes the OpenSSF
+Scorecard workflow cancelling its own run. The image is identical to 0.1.6. Work continues in 0.2.0
+(one container with an embedded SMB1 server).
+
 ### Fixed
 
 - The OpenSSF Scorecard workflow no longer cancels its own run: a push and a branch-protection
