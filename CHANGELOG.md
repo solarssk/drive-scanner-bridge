@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `AGENTS.md` (commands, code and workflow rules, and what an agent must not do) and a
+  `CLAUDE.md` that imports it, following the playbook. `uploader/`, `.github/` and `docs/` have
+  their own nested `AGENTS.md` (the closest file wins), each with a `CLAUDE.md` that imports it.
+- A `README.md` in `docs/` (an index by task), `docs/roadmap/`, `uploader/`, `scripts/` and
+  `.github/workflows/` (what each workflow does and whether it can block a merge).
+- Mermaid diagrams (data flow, file states, crash recovery, when a file is complete, the
+  release flow, failure recovery, secrets, CI) and GitHub callouts in the docs.
+- `docs/configuration.md`: every setting with its default, whether `.env` can set it, and what
+  it does (the README never listed them all).
+
+### Changed
+
+- The README was about 600 lines and held everything. It is now a short front page (what the
+  project is and is not, quick start, the most common settings, security at a glance) that
+  follows the playbook README standard. The rest moved, rewritten for clarity, into
+  `docs/architecture.md`, `deployment.md`, `security.md`, `troubleshooting.md`,
+  `synology-client.md` and `development.md`. The README title now matches the repository name.
+  References in comments and docs point at the new pages. `docs/MAINTENANCE.md` is now
+  `docs/maintenance.md` (all docs use lowercase file names) and the release process moved to
+  `docs/releasing.md`. The release notes link to it.
+
 ## [0.1.4] - 2026-10-09
 
 Fixes retention cleanup deleting a re-scanned file; also ships the release-automation hardening and the documentation audit.

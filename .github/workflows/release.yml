@@ -222,7 +222,7 @@ jobs:
             sleep 15
           done
           if [ "$STATUS" != "completed" ] || [ "$CONCLUSION" != "success" ]; then
-            echo "::error::The image run for ${VERSION} did not succeed (status=${STATUS}, conclusion=${CONCLUSION}): ${URL}. The tag and Release exist, but the image does not. If the cause was transient (registry, network, runner), run 'Publish image' by hand for ${VERSION}, then close the milestone. If it is a scan finding or build error in the tagged files, running it again fails the same way: fix it on main and ship it as the next patch version (docs/MAINTENANCE.md, Release process)." >&2
+            echo "::error::The image run for ${VERSION} did not succeed (status=${STATUS}, conclusion=${CONCLUSION}): ${URL}. The tag and Release exist, but the image does not. If the cause was transient (registry, network, runner), run 'Publish image' by hand for ${VERSION}, then close the milestone. If it is a scan finding or build error in the tagged files, running it again fails the same way: fix it on main and ship it as the next patch version (docs/releasing.md, When something fails)." >&2
             exit 1
           fi
           echo "Image published: ${URL}"

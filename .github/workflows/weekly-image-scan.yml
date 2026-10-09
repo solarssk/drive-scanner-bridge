@@ -4,7 +4,7 @@ name: Weekly image scan
 # Critical+High CVE picture against the base image (including findings
 # that drift in from Google's distroless rebuild cadence, not from any
 # code change here) without blocking any PR -- see ci.yml's build-image
-# job for the PR-time Critical-only gate, and docs/MAINTENANCE.md (Container
+# job for the PR-time Critical-only gate, and docs/maintenance.md (Container
 # scanning) for context.
 # A failed run here just means: check the log, and re-run once distroless
 # publishes an updated image, or bump/pin a newer digest.
