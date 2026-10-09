@@ -20,13 +20,15 @@ uploader/
 ├── Dockerfile              multi-stage build, distroless runtime
 ├── pyproject.toml          package metadata and dev tools
 ├── requirements.in         runtime dependencies (input)
-└── requirements.txt        hash-locked runtime dependencies (generated)
+├── requirements.txt        hash-locked runtime dependencies (generated)
+├── requirements-dev.in     dev tools (input)
+└── requirements-dev.txt    hash-locked dev tools (generated)
 ```
 
 ## Run the checks
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
+python3 -m venv .venv && .venv/bin/pip install --require-hashes -r requirements-dev.txt && .venv/bin/pip install --no-deps -e .
 .venv/bin/ruff check . ../scripts
 .venv/bin/mypy
 .venv/bin/pytest -q

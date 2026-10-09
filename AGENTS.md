@@ -27,7 +27,8 @@ Tier 2 and is required here.
 Run from `uploader/` with Python 3.13. These are exactly the commands CI runs:
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"   # once
+python3 -m venv .venv && .venv/bin/pip install --require-hashes -r requirements-dev.txt \
+  && .venv/bin/pip install --no-deps -e .   # once
 .venv/bin/ruff check . ../scripts
 .venv/bin/mypy
 .venv/bin/pytest -q

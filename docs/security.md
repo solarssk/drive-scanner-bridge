@@ -130,7 +130,7 @@ What protects the project from a bad dependency, a compromised action or a tampe
 
 | Control | What it does |
 |---|---|
-| Hash-locked Python dependencies | The image installs `requirements.txt` with `--require-hashes`, and CI checks that the lock covers everything `pyproject.toml` declares. |
+| Hash-locked Python dependencies | The image installs `requirements.txt` with `--require-hashes`, and CI checks that the lock covers everything `pyproject.toml` declares. The dev tools CI runs are locked the same way (`requirements-dev.txt`). |
 | Pinned base images | Both bases are pinned by digest. |
 | Actions pinned to a commit | Every action is pinned to a full commit SHA, with the version in a comment. |
 | Dependabot with a cooldown | Weekly, grouped, and a version is proposed only 7 days after it is published. A compromised release is usually pulled within days. Security updates ignore the cooldown. |
