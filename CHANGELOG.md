@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-09
+
+Releases are now automatic. The runtime code is identical to 0.1.2.
+
 ### Added
 
 - Releases are automatic. Merging a release PR to `main` (version bumped, matching
