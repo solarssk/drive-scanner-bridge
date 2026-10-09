@@ -10,7 +10,7 @@
 # 3.13 the distroless image bundles, so any compiled C extensions among our
 # dependencies (e.g. charset_normalizer) are ABI-compatible with the
 # interpreter that will actually run them.
-FROM gcr.io/distroless/python3-debian13:latest@sha256:0e48fa084c225991c3f4e133306cd64fdca9ed028215a2d8a67eb798c857a981 AS distroless-base
+FROM gcr.io/distroless/python3-debian13:latest@sha256:931a490beb37db6a1d137ad11ed47ae4c0d4741ca5c2285818b49e9a8ee11c56 AS distroless-base
 
 FROM python:3.13-slim@sha256:bf44cdfcb76cd3b41e879bc058fc37ec5872002ccfde7fcb765e218cde0cd79c AS builder
 
@@ -40,7 +40,7 @@ RUN echo 'bridge:x:100:' >> /etc/group \
  && mkdir -p /incoming /data \
  && chown -R 1048:100 /incoming /data
 
-FROM gcr.io/distroless/python3-debian13:latest@sha256:0e48fa084c225991c3f4e133306cd64fdca9ed028215a2d8a67eb798c857a981
+FROM gcr.io/distroless/python3-debian13:latest@sha256:931a490beb37db6a1d137ad11ed47ae4c0d4741ca5c2285818b49e9a8ee11c56
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
