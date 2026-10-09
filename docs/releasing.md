@@ -20,6 +20,7 @@ prepare the pull request.
 | Git tag `X.Y.Z` (no `v` prefix) | On the merge commit |
 | GitHub Release | Notes built from the CHANGELOG by `scripts/format_release_notes.py` |
 | Container image | `ghcr.io/solarssk/drive-scanner-bridge:X.Y.Z` for `linux/amd64` and `linux/arm64` |
+| SBOMs | `sbom-linux-amd64.cdx.json` and `sbom-linux-arm64.cdx.json` (CycloneDX), attached to the Release |
 | Closed milestone | The one named exactly like the version |
 
 ## How the automation works
@@ -42,7 +43,8 @@ The files that must agree are `uploader/pyproject.toml`, `__version__`, the `ima
 `docker-compose.yml` and the CHANGELOG heading.
 
 `Publish image` (`release-image.yml`) then builds each platform, scans each one, and only
-then pushes. CRITICAL or HIGH findings with a fix stop the publish.
+then pushes. CRITICAL or HIGH findings with a fix stop the publish. It also writes a CycloneDX
+SBOM from each scanned image, and the release workflow attaches them to the Release.
 
 > [!NOTE]
 > The release workflow waits for the exact run it started. It uses the run URL that `gh`

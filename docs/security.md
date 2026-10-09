@@ -12,6 +12,7 @@ scanned bases. To report a vulnerability, use [SECURITY.md](../SECURITY.md).
 - [Container hardening](#container-hardening)
 - [Image build](#image-build)
 - [Vulnerability scanning](#vulnerability-scanning)
+- [Supply chain](#supply-chain)
 
 ## Secrets and credentials
 
@@ -122,3 +123,34 @@ on them would block unrelated work for something no code change here can fix.
 The base moved from `python3-debian12` to `python3-debian13` in 0.1.1. The debian12 image
 had not picked up Debian's fixes for weeks (25 fixable HIGH findings, red in the weekly
 scan from 2026-09-14). The debian13 image had no fixable CRITICAL or HIGH findings.
+
+## Supply chain
+
+What protects the project from a bad dependency, a compromised action or a tampered image:
+
+| Control | What it does |
+|---|---|
+| Hash-locked Python dependencies | The image installs `requirements.txt` with `--require-hashes`, and CI checks that the lock covers everything `pyproject.toml` declares. |
+| Pinned base images | Both bases are pinned by digest. |
+| Actions pinned to a commit | Every action is pinned to a full commit SHA, with the version in a comment. |
+| Dependabot with a cooldown | Weekly, grouped, and a version is proposed only 7 days after it is published. A compromised release is usually pulled within days. Security updates ignore the cooldown. |
+| `pip-audit` | Audits the dependencies in every CI run. |
+| Workflow lint | `actionlint` checks correctness, `zizmor` checks safety (template injection, permissions, unpinned actions). |
+| Secret scan | `gitleaks` scans the commits of each run, next to GitHub's own secret scanning and push protection. |
+| SBOM per release | A CycloneDX file per platform is attached to the GitHub Release. |
+| OpenSSF Scorecard | An independent, public score of these practices. Report-only, never a merge gate. |
+
+### Reading the SBOM
+
+Each release has `sbom-linux-amd64.cdx.json` and `sbom-linux-arm64.cdx.json` as assets. They
+list every package inside the image that was scanned and pushed. To check a past release
+against a new CVE without pulling the image:
+
+```bash
+trivy sbom --severity CRITICAL,HIGH sbom-linux-amd64.cdx.json
+```
+
+> [!NOTE]
+> The SBOMs are attached right after the image is published. If that step could not run
+> (for example when a release is repeated after the image already exists), the release run
+> shows a warning and the image is still fine.

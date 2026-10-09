@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Each release now carries a CycloneDX SBOM per platform (`sbom-linux-amd64.cdx.json`,
+  `sbom-linux-arm64.cdx.json`), generated from the image that was scanned and pushed and attached
+  to the GitHub Release. A new report-only OpenSSF Scorecard workflow scores the repository's
+  supply-chain posture weekly and on pushes to `main`. `docs/security.md` has a Supply chain
+  section.
 - CI lints the workflows with `actionlint` and `zizmor` and scans the commits of each run for
   secrets with `gitleaks` (both tools pinned, downloaded binaries checksum-verified). Every
   checkout sets `persist-credentials: false`, and every Dependabot entry has a 7-day

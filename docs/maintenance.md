@@ -47,6 +47,8 @@ SonarCloud and Codecov are Tier 3 items that were added deliberately.
 | 2 | Blocking container scan | ✅ see [Container scanning](#container-scanning) |
 | 2 | `concurrency:` group in every workflow | ✅ |
 | 2 | Release automation (tag, Release, image, milestone) | ✅ `release.yml` |
+| 2 | SBOM (CycloneDX) for the published image | ✅ attached to each Release |
+| 2 | OpenSSF Scorecard workflow, report-only | ✅ `scorecard.yml` |
 | 2 | CONTRIBUTING.md, PR template, CODEOWNERS | ✅ |
 | 2 | Badge row (CI, release, license) | ✅ |
 | 2 | README follows the playbook README standard, depth in `docs/` | ✅ |
