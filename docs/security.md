@@ -101,7 +101,7 @@ Scan the published image yourself after any base-image change. This is the scann
 flags CI uses, and it needs no account:
 
 ```bash
-trivy image --severity CRITICAL,HIGH --ignore-unfixed ghcr.io/solarssk/drive-scanner-bridge:0.1.5
+trivy image --severity CRITICAL,HIGH --ignore-unfixed ghcr.io/solarssk/drive-scanner-bridge:0.1.6
 ```
 
 A clean scan is a snapshot, not a guarantee. New CVEs are published against released
