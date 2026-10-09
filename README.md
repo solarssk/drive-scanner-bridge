@@ -77,7 +77,7 @@ git clone https://github.com/solarssk/drive-scanner-bridge.git
 cd drive-scanner-bridge
 cp .env.example .env          # set SYNOLOGY_HOST, SMB1_STATIC_IP, SMB_PRT01_PASSWORD
 printf '%s' 'the DSM password' > secrets/synology_password
-docker compose up -d          # pulls ghcr.io/solarssk/drive-scanner-bridge:0.1.6
+docker compose up -d          # pulls ghcr.io/solarssk/drive-scanner-bridge:0.1.7
 docker compose logs -f drive-uploader
 ```
 

@@ -54,7 +54,7 @@ SBOM from each scanned image, and the release workflow attaches them to the Rele
 ## Prepare a release
 
 1. Close or move every issue in the milestone. The milestone is named like the version,
-   for example `0.1.6`.
+   for example `0.1.7`.
 2. Bump the version everywhere it is written:
    - `uploader/pyproject.toml`
    - `uploader/scanner_drive_bridge/__init__.py`

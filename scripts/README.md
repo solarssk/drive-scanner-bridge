@@ -11,7 +11,7 @@
 ## format_release_notes.py
 
 ```bash
-python3 scripts/format_release_notes.py 0.1.6 > release-notes.md
+python3 scripts/format_release_notes.py 0.1.7 > release-notes.md
 ```
 
 - Takes a plain `X.Y.Z` version. Anything else is rejected.

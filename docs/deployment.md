@@ -81,7 +81,7 @@ For development, or when there is no registry access, build under the name the c
 file expects before `up`:
 
 ```bash
-docker build -t ghcr.io/solarssk/drive-scanner-bridge:0.1.6 ./uploader
+docker build -t ghcr.io/solarssk/drive-scanner-bridge:0.1.7 ./uploader
 ```
 
 </details>
@@ -104,7 +104,7 @@ under the same name.
 </details>
 
 1. **Image.** Nothing to build: the stack pulls
-   `ghcr.io/solarssk/drive-scanner-bridge:0.1.6`. If the package is private, add the
+   `ghcr.io/solarssk/drive-scanner-bridge:0.1.7`. If the package is private, add the
    registry once under Registries, Add registry, Custom, with URL `ghcr.io`, your GitHub
    user name and a token with `read:packages`.
 
