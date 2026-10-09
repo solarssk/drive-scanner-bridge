@@ -40,6 +40,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   it was meant to check. A docstring in `worker.py` no longer claims that startup reconciliation
   cleans up leftover local files (it does not; the next stability poll does).
 - The unit-test job no longer checks out the full git history, which nothing in it uses.
+- Local retention cleanup (`DELETE_AFTER_UPLOAD=false`) could delete a fresh scan that reused the
+  name of an expired upload: it removed whatever file had that name without checking its content,
+  and the stale record also stayed behind, so re-scanning the same document (e.g. after deleting
+  it from Drive) was removed on arrival and never uploaded. Cleanup now checks the content hash,
+  never touches a file that no longer matches, and drops the record once the local copy is gone
+  (or was already gone); a record is kept when the file cannot be removed, and a failing record
+  delete no longer stops the worker. Records are also kept while the inbox volume is missing and
+  while a byte-identical copy under another name is still kept there.
 - A `Publish image` run started by hand from `main` stamped `org.opencontainers.image.revision`
   with main's tip instead of the commit it built (as happened to 0.1.1). The label now records
   the checked-out commit.
