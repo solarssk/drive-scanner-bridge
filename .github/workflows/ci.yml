@@ -67,8 +67,7 @@ jobs:
       # `secrets` is not a permitted context inside `if:` conditions (job-
       # or step-level) -- route the presence check through `env` instead,
       # which is. Dependabot-triggered runs (and any external fork PR)
-      # don't receive repository Actions secrets, only a separate
-      # Dependabot-secrets store, empty unless configured to match.
+      # don't receive repository Actions secrets, so the steps below skip.
       HAS_SONAR_TOKEN: ${{ secrets.SONAR_TOKEN != '' }}
       HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
     steps:
@@ -79,31 +78,34 @@ jobs:
         with:
           name: coverage-report
           path: uploader
-      # Guard each secret-backed step so a run with no token skips cleanly
-      # instead of failing this job outright. This job's own required-check
-      # status still passes on a skip; see CONTRIBUTING.md for the
-      # Dependabot-secrets setup needed so Sonar/Codecov's own external
-      # checks (which have no "skip" concept) still run for real there.
+      # Sonar and Codecov are report-only signals, not merge gates (same as the
+      # owner's other repositories): no check from this job or from the Sonar/
+      # Codecov apps is required. Each secret-backed step skips cleanly when its
+      # token is absent, and continue-on-error keeps an outage of either service
+      # from turning this job red.
       - name: SonarQube Cloud Scan
         if: ${{ !cancelled() && env.HAS_SONAR_TOKEN == 'true' }}
+        continue-on-error: true
         uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       - name: Upload coverage to Codecov
         if: ${{ !cancelled() && env.HAS_CODECOV_TOKEN == 'true' }}
+        continue-on-error: true
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: uploader/coverage.xml
-          fail_ci_if_error: true
+          fail_ci_if_error: false
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && env.HAS_CODECOV_TOKEN == 'true' }}
+        continue-on-error: true
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: uploader/junit.xml
           report_type: test_results
-          fail_ci_if_error: true
+          fail_ci_if_error: false
 
   build-image:
     name: Build uploader image

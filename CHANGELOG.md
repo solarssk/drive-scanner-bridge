@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- SonarCloud and Codecov are report-only signals, as in the owner's other repositories: the
+  external `SonarCloud Code Analysis` and `codecov/patch` checks and the `Code quality` job are no
+  longer required status checks, and their steps use `continue-on-error`. Dependabot PRs cannot
+  read repository secrets, so those two external checks were never posted and every such PR sat
+  `BLOCKED`; they are now mergeable once `Unit tests`, `Build uploader image` and
+  `Validate docker-compose.yml` are green. The Dependabot secrets store is not needed.
 - Release automation hardened after an independent review of its first real run (0.1.3, which
   was not affected):
   - one failed API call while waiting for the image run no longer aborts the wait;
