@@ -186,6 +186,6 @@ not just a YAML parser: GitHub rejects some expressions that are valid YAML.
 
 ## Roadmap
 
-- 0.1.4: hardening of the release automation and a tidy-up of stale docs (milestone `0.1.4`).
+- 0.1.4: fix for retention cleanup deleting a re-scanned file, hardening of the release automation and a tidy-up of stale docs (milestone `0.1.4`).
 - 0.2.0: single container with an embedded SMB1 server, see
   [roadmap/0.2.0-single-container-smb1.md](roadmap/0.2.0-single-container-smb1.md).

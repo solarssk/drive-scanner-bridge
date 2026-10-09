@@ -66,7 +66,7 @@ services:
     # Images -> Build a new image -> Upload). Bump the tag on every release (see
     # README "Upgrading") so there is never ambiguity about which image a redeploy
     # picked up.
-    image: ghcr.io/solarssk/drive-scanner-bridge:0.1.3
+    image: ghcr.io/solarssk/drive-scanner-bridge:0.1.4
     container_name: drive-uploader
     restart: unless-stopped
     depends_on:

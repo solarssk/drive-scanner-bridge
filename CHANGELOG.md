@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-10-09
+
+Fixes retention cleanup deleting a re-scanned file; also ships the release-automation hardening and the documentation audit.
+
 ### Changed
 
 - Release automation hardened after an independent review of its first real run (0.1.3, which
