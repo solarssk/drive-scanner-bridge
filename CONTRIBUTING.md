@@ -10,7 +10,7 @@ and PRs readable months later:
   own PRs are exempt -- it labels and targets them automatically.
 - **Branch naming:** `<type>/<short-description>`, e.g.
   `maintenance/governance-ci-hardening`. `type` is one of `fix`, `feature`,
-  `maintenance`, `security`.
+  `maintenance`, `security`, `docs`, `release` (`release/x.y.z` for a release PR).
 - **Before merging:** all required CI checks (`Unit tests`,
   `Build uploader image`, `Validate docker-compose.yml`,
   `Code quality (Sonar + Codecov)`, `SonarCloud Code Analysis`,

@@ -126,8 +126,9 @@ Recovery and manual use:
   links the package to this repository.
 - Only exact version tags are published, no `latest`, so a deployment never moves by itself.
   A published tag is immutable: `Publish image` leaves a version that is already on ghcr.io untouched.
-- A pull request that touches the workflow, the Dockerfile or `requirements.txt` runs the
-  same pipeline as a dry run: both platforms are built and scanned, nothing is pushed.
+- A pull request that touches the workflow, the Dockerfile, `requirements.txt` or
+  `uploader/pyproject.toml` (every release PR bumps it) runs the same pipeline as a dry
+  run: both platforms are built and scanned, nothing is pushed.
 
 ## Dependabot
 
@@ -137,7 +138,7 @@ Recovery and manual use:
   Dependabot* as well, or every Dependabot PR stays `BLOCKED` (SonarCloud and Codecov
   report nothing and have no "skipped" state).
 - Fallback when that store is empty: apply the same changes in one human-authored PR and
-  close the Dependabot PRs. Verify every new SHA first (next section).
+  close the Dependabot PRs. Verify every new SHA first (see "Pinning actions" below).
 - `if:` conditions cannot read `secrets.*`. Route the check through a job-level `env:`
   value, as the `code-quality` job does.
 
@@ -185,8 +186,6 @@ not just a YAML parser: GitHub rejects some expressions that are valid YAML.
 
 ## Roadmap
 
-- 0.1.1: stabilization of the current two-container setup (milestone `0.1.1`).
-- 0.1.2: the image is published to ghcr.io on release (milestone `0.1.2`).
-- 0.1.3: releases are automatic, merging the release PR does everything (milestone `0.1.3`).
+- 0.1.4: hardening of the release automation and a tidy-up of stale docs (milestone `0.1.4`).
 - 0.2.0: single container with an embedded SMB1 server, see
   [roadmap/0.2.0-single-container-smb1.md](roadmap/0.2.0-single-container-smb1.md).

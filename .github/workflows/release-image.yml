@@ -7,8 +7,9 @@ run-name: Publish image ${{ inputs.version || github.head_ref || github.ref_name
 # Publishes the uploader image to ghcr.io. release.yml dispatches it on the new tag when a
 # release PR merges; that is the normal path. A manual run (version + publish) publishes or
 # dry-runs a version by hand, and a release tag (x.y.z) pushed by hand also publishes, as a
-# fallback. Pull requests that touch this workflow, the Dockerfile or the dependency lock
-# only dry-run: both platforms are built and scanned, but nothing logs in or pushes.
+# fallback. Pull requests that touch this workflow, the Dockerfile, the dependency lock or
+# uploader/pyproject.toml (every release PR bumps it) only dry-run: both platforms are built
+# and scanned, but nothing logs in or pushes.
 #
 # A published version tag is immutable: if ghcr.io already has it, nothing is rebuilt or
 # pushed, so a retried run can never change the digest someone has already deployed.

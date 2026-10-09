@@ -11,8 +11,7 @@ Idempotency strategy (see README for the full write-up):
      means the upload did not happen.
   4. A file is only deleted locally after its state is durably committed
      to `uploaded` in SQLite. A crash between that commit and the delete
-     leaves a harmless leftover local file, which startup reconciliation
-     or the next stability poll cleans up (see `_handle_new_stable_file`'s
+     leaves a harmless leftover local file, which the next stability poll cleans up (see `_handle_new_stable_file`'s
      duplicate-content branch) without ever re-uploading it.
 """
 from __future__ import annotations
@@ -81,7 +80,7 @@ class Worker:
             self._client.login()
             self.last_auth_success_at = self._clock()
             logger.info("authenticated to Synology Drive")
-        except Exception as exc:  # noqa: BLE001 - must not crash-loop at startup
+        except Exception as exc:  # must not crash-loop at startup
             self.last_error = str(exc)
             logger.warning(
                 "initial authentication failed, will keep retrying during normal operation: %s", exc
@@ -93,7 +92,7 @@ class Worker:
     def _verify_destination(self) -> None:
         try:
             folders = self._client.list_team_folders()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("could not verify destination team folder at startup (will proceed anyway): %s", exc)
             return
         name = self._config.synology_destination.rstrip("/").split("/")[-1]
@@ -114,7 +113,7 @@ class Worker:
             )
             try:
                 remote_files = self._client.list_folder(self._config.synology_destination)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "could not reconcile interrupted upload (will retry later) file=%s error=%s",
                     record.original_name, exc,
@@ -155,26 +154,26 @@ class Worker:
     def _loop_once(self) -> None:
         try:
             stable_paths = self._stability.poll(self._config.incoming_dir)
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("unexpected error while polling incoming directory")
             return
 
         for path in stable_paths:
             try:
                 self._handle_new_stable_file(path)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.exception("unexpected error handling file %s, skipping this cycle", path.name)
 
         try:
             due = self._state.due_pending(self._clock())
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("unexpected error reading due uploads")
             return
 
         for record in due:
             try:
                 self._attempt_upload_for_record(record)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.exception("unexpected error uploading %s, will retry next cycle", record.original_name)
 
         if not self._config.delete_after_upload and self._config.local_retention_hours is not None:
@@ -187,7 +186,7 @@ class Worker:
         cutoff = self._clock() - retention_hours * 3600
         try:
             expired = self._state.uploaded_before(cutoff)
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("unexpected error checking local retention cleanup")
             return
         for record in expired:

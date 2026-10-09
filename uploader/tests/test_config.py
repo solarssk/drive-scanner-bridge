@@ -91,6 +91,7 @@ def test_ca_file_ignored_if_missing(monkeypatch, tmp_path, caplog):
     config = Config.from_env()
 
     assert config.synology_ca_file is None
+    assert any("does not exist" in r.message for r in caplog.records)
 
 
 def test_retry_backoff_parsing(monkeypatch):

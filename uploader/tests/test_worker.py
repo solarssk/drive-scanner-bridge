@@ -21,7 +21,6 @@ class FakeClock:
 
 class FakeSynologyClient:
     def __init__(self, team_folders=None, remote_files=None, upload_outcomes=None, always_fail=None):
-        self.login_calls = 0
         self.upload_calls = []
         self.team_folders = team_folders if team_folders is not None else [{"name": "printer"}]
         self.remote_files = remote_files if remote_files is not None else []
