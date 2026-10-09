@@ -486,3 +486,85 @@ def test_rescan_of_identical_content_after_retention_removal_is_uploaded(make_co
     worker._loop_once()
     assert client.upload_calls == ["SCN_0001.pdf", "SCN_0001.pdf"]
     state.close()
+
+
+def _uploaded_worker(make_config, content=b"scan-content"):
+    config = make_config(delete_after_upload=False, local_retention_hours=24.0)
+    (config.incoming_dir / "SCN_0001.pdf").write_bytes(content)
+    client = FakeSynologyClient()
+    worker, state, clock = _build_worker(config, client)
+    worker.startup()
+    worker._loop_once()
+    worker._loop_once()
+    assert state.get(_sha(content)).state == "uploaded"
+    return config, client, worker, state, clock
+
+
+def test_retention_cleanup_keeps_file_overwritten_with_new_content(make_config, caplog):
+    # The kept copy is replaced by a different scan under the same name before
+    # its record expires: the file must survive and the stale record go.
+    caplog.set_level(logging.WARNING)
+    config, client, worker, state, clock = _uploaded_worker(make_config, b"old-scan")
+    path = config.incoming_dir / "SCN_0001.pdf"
+    path.write_bytes(b"new-scan")
+
+    clock.advance(25 * 3600)
+    worker._loop_once()
+
+    assert path.read_bytes() == b"new-scan"
+    assert state.get(_sha(b"old-scan")) is None
+    assert any("name reused by a newer scan" in r.message for r in caplog.records)
+    state.close()
+
+
+def test_retention_cleanup_removes_local_copy_and_its_record(make_config):
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+
+    clock.advance(25 * 3600)
+    worker._loop_once()
+
+    assert not (config.incoming_dir / "SCN_0001.pdf").exists()
+    assert state.get(_sha(b"scan-content")) is None
+    state.close()
+
+
+def test_retention_cleanup_ignores_record_whose_file_is_already_gone(make_config):
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+    (config.incoming_dir / "SCN_0001.pdf").unlink()
+
+    clock.advance(25 * 3600)
+    worker._loop_once()
+
+    assert state.get(_sha(b"scan-content")).state == "uploaded"  # left for a later pass
+    state.close()
+
+
+def test_retention_cleanup_leaves_file_alone_when_it_cannot_be_hashed(make_config, monkeypatch):
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+    clock.advance(25 * 3600)
+
+    def unreadable(path):
+        raise OSError("input/output error")
+
+    monkeypatch.setattr("scanner_drive_bridge.worker.hash_file", unreadable)
+    worker._loop_once()
+
+    assert (config.incoming_dir / "SCN_0001.pdf").exists()
+    assert state.get(_sha(b"scan-content")).state == "uploaded"
+    state.close()
+
+
+def test_retention_cleanup_error_does_not_break_the_loop(make_config, monkeypatch, caplog):
+    caplog.set_level(logging.ERROR)
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+
+    def broken(cutoff):
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(state, "uploaded_before", broken)
+    clock.advance(25 * 3600)
+    worker._loop_once()
+
+    assert (config.incoming_dir / "SCN_0001.pdf").exists()
+    assert any("local retention cleanup" in r.message for r in caplog.records)
+    state.close()
