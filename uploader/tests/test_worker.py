@@ -28,7 +28,7 @@ class FakeSynologyClient:
         self._always_fail = always_fail
 
     def login(self):
-        self.login_calls += 1
+        pass
 
     def list_team_folders(self):
         return self.team_folders
@@ -57,6 +57,20 @@ def _build_worker(config, client, clock=None):
 
 def _sha(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
+
+
+def test_startup_records_successful_authentication(make_config):
+    # startup() swallows a failed login (it keeps retrying in the loop), so a
+    # broken fake client would otherwise leave every startup()-based test
+    # silently running the failure path.
+    config = make_config()
+    worker, state, _ = _build_worker(config, FakeSynologyClient())
+
+    worker.startup()
+
+    assert worker.last_auth_success_at is not None
+    assert worker.last_error is None
+    state.close()
 
 
 def test_source_file_removed_after_successful_upload(make_config):
