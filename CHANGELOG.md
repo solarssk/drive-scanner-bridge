@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- The dev tools CI runs (pytest, ruff, mypy, pip-audit, pip, setuptools) are installed from a
+  hash-locked `uploader/requirements-dev.txt` instead of open-ended ranges, constrained to the
+  exact runtime pins of the image. Unit tests check that the lock files and `pyproject.toml` stay
+  in step. Dependabot keeps the new lock current like the runtime one.
+- Note on 0.1.5: its image was built on the distroless base digest `931a490b...` bumped by
+  Dependabot (#53) just before the release, not on `0e48fa08...` that 0.1.4 used. The release
+  notes said the runtime was identical; the bridge's own code was, the base image was not. The
+  release gate (CRITICAL and HIGH findings with a fix) passed for it.
+
 ## [0.1.5] - 2026-10-09
 
 The repository now meets the playbook's Tier 2 (checked with its own `verify-tier`): workflows are

@@ -29,10 +29,11 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
-      - run: 'pip install --require-hashes --only-binary=:all: -r requirements.txt'
-      - run: pip install -e ".[dev]"
-      - run: 'pip install --upgrade --only-binary=:all: "pip==26.2.1" "setuptools==84.0.0"'
-      - run: 'pip install --only-binary=:all: "pip-audit==2.10.1" && pip-audit'
+      # Every tool is installed from a hash-locked file (runtime and dev), so a new release of
+      # a dev tool cannot reach CI before Dependabot proposes it, with its cooldown.
+      - run: 'pip install --require-hashes --only-binary=:all: -r requirements-dev.txt'
+      - run: pip install --no-deps -e .
+      - run: pip-audit
       - run: ruff check . ../scripts
       - run: mypy
       - run: pytest -q --cov=scanner_drive_bridge --cov-report=xml:coverage.xml --cov-report=term --junitxml=junit.xml

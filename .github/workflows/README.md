@@ -39,7 +39,7 @@ flowchart LR
 
 | Job (check name) | What it does |
 |---|---|
-| `test` (`Unit tests`) | ruff, mypy, pytest with coverage, `pip-audit`, and a lock-consistency check |
+| `test` (`Unit tests`) | Installs the hash-locked dev tools, then ruff, mypy, pytest with coverage, `pip-audit`, and a lock-consistency check |
 | `code-quality` (`Code quality (Sonar + Codecov)`) | Uploads coverage and test results to Codecov, runs the SonarCloud scan. Skips cleanly without tokens. Report-only. |
 | `build-image` (`Build uploader image`) | Builds the image and runs Trivy, failing on CRITICAL findings that have a fix |
 | `compose-lint` (`Validate docker-compose.yml`) | Renders the compose file with placeholder values |

@@ -1,0 +1,18 @@
+# Tools CI and contributors run (tests, lint, types, audit). Keep the dev list in sync with
+# [project.optional-dependencies].dev in pyproject.toml; a unit test checks it.
+# requirements-dev.txt is generated from this file; do not edit it by hand:
+#   pip-compile --generate-hashes --strip-extras --allow-unsafe -o requirements-dev.txt requirements-dev.in
+#
+# The runtime set is constrained to the exact pins of requirements.txt, so CI tests the same
+# dependency versions the image ships.
+-c requirements.txt
+-r requirements.in
+pytest>=8.0
+pytest-cov>=5.0
+ruff>=0.16
+mypy>=2.4
+types-requests>=2.33
+pip-audit>=2.10
+# pip-audit reports the environment's own pip and setuptools, so they are locked as well.
+pip>=26.2
+setuptools>=84

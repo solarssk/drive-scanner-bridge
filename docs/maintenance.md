@@ -115,22 +115,29 @@ requiring them would leave those pull requests blocked for good.
 
 ## Python dependencies
 
-Runtime dependencies are hash-locked. `uploader/requirements.in` is the input and
-`uploader/requirements.txt` is the generated output. The Dockerfile and CI install it with
-`--require-hashes`. Dependabot's `pip` ecosystem keeps both current.
+Two hash-locked sets, both installed with `--require-hashes`:
 
-To regenerate by hand, with Python 3.13:
+| Set | Input | Generated lock | Installed by |
+|---|---|---|---|
+| Runtime | `uploader/requirements.in` | `uploader/requirements.txt` | the Dockerfile and CI |
+| Dev tools (pytest, ruff, mypy, pip-audit, ...) | `uploader/requirements-dev.in` | `uploader/requirements-dev.txt` | CI and contributors |
+
+The dev lock is constrained to the exact runtime pins (`-c requirements.txt`), so CI tests the
+versions the image ships. Dependabot's `pip` ecosystem keeps both current, and a new release waits
+out the 7-day cooldown first.
+
+To regenerate by hand, with Python 3.13, from `uploader/`:
 
 ```bash
-cd uploader && pip-compile --generate-hashes --strip-extras -o requirements.txt requirements.in
+pip-compile --generate-hashes --strip-extras -o requirements.txt requirements.in
+pip-compile --generate-hashes --strip-extras --allow-unsafe -o requirements-dev.txt requirements-dev.in
 ```
 
-Keep `requirements.in` in sync with `[project].dependencies` in `pyproject.toml`. CI
-enforces it: the last step of the `Unit tests` job installs the lock plus the package with
-`--no-deps` (as the Dockerfile does) in a throwaway venv and runs `pip check`. That fails
-if `pyproject.toml` declares a dependency the lock does not contain.
-
-Dev tools (ruff, mypy, pytest) are version ranges on purpose. They do not ship in the image.
+Keep the `.in` files in sync with `pyproject.toml`. Unit tests check that the runtime list and
+every dev extra match, that each pin has hashes, and that the dev lock keeps the runtime pins. CI
+also installs the runtime lock plus the package with `--no-deps` (as the Dockerfile does) in a
+throwaway venv and runs `pip check`, which fails if `pyproject.toml` declares a dependency the
+lock does not contain.
 
 ## Pinning actions
 

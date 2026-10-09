@@ -15,8 +15,12 @@ You need Python 3.13. Work from the `uploader/` directory:
 ```bash
 cd uploader
 python3 -m venv .venv
-.venv/bin/pip install -e ".[dev]"
+.venv/bin/pip install --require-hashes -r requirements-dev.txt
+.venv/bin/pip install --no-deps -e .
 ```
+
+This is what CI does: every tool comes from the hash-locked `requirements-dev.txt`. For a quick
+local setup, `pip install -e ".[dev]"` also works but resolves unlocked versions.
 
 ## Run the checks
 
