@@ -6,12 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `AGENTS.md` (commands, code and workflow rules, and what an agent must not do) and a
+  `CLAUDE.md` that imports it, following the playbook.
+- `docs/configuration.md`: every setting with its default, whether `.env` can set it, and what
+  it does (the README never listed them all).
+
 ## [0.1.4] - 2026-10-09
 
 Fixes retention cleanup deleting a re-scanned file; also ships the release-automation hardening and the documentation audit.
 
 ### Changed
 
+- The README was about 600 lines and held everything. It is now a short front page (what the
+  project is and is not, quick start, the most common settings, security at a glance) that
+  follows the playbook README standard. The rest moved, rewritten for clarity, into
+  `docs/architecture.md`, `deployment.md`, `security.md`, `troubleshooting.md`,
+  `synology-client.md` and `development.md`. The README title now matches the repository name.
+  References in comments and docs point at the new pages.
 - SonarCloud and Codecov are report-only signals, as in the owner's other repositories: the
   external `SonarCloud Code Analysis` and `codecov/patch` checks and the `Code quality` job are no
   longer required status checks, and their steps use `continue-on-error`. Dependabot PRs cannot

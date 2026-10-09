@@ -4,7 +4,7 @@
 # a shell, ...) that a python:3.13-slim image carries and this service never
 # touches. CI scans the built image with Trivy (ci.yml, weekly-image-scan.yml,
 # release-image.yml); the base is not CVE-free, those scans are the check.
-# See README "Security".
+# See docs/security.md.
 #
 # The builder stage uses python:3.13-slim specifically to match the Python
 # 3.13 the distroless image bundles, so any compiled C extensions among our

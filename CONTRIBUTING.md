@@ -15,7 +15,8 @@ and PRs readable months later:
   `Build uploader image`, `Validate docker-compose.yml`) must pass -- branch
   protection on `main` enforces this. SonarCloud and Codecov report on every PR
   but are report-only signals, not merge gates (same as the owner's other repos).
-- **Running tests locally:** `cd uploader && pip install -e ".[dev]" && pytest -q`.
+- **Running the checks locally:** see [docs/development.md](docs/development.md). Agents:
+  see [AGENTS.md](AGENTS.md).
 - **Repo secrets:** `SONAR_TOKEN` and `CODECOV_TOKEN` are Actions secrets only.
   Dependabot-triggered runs and fork PRs cannot read them, so ci.yml's
   `code-quality` job skips those steps there and the PR stays mergeable once the

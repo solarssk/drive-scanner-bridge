@@ -1,6 +1,6 @@
 """Main orchestration loop: detect stable files, upload them, track state.
 
-Idempotency strategy (see README for the full write-up):
+Idempotency strategy (see docs/architecture.md for the full write-up):
   1. Every file is identified by its SHA-256 content hash, tracked in
      `StateStore`, with states pending -> uploading -> uploaded.
   2. `conflict_action` (autorename by default) is Synology's own safety net

@@ -35,6 +35,8 @@ more Tier 3 machinery (DAST, SBOM, wiki) unless the scope actually grows.
 | 2 | Release automation (tag, GitHub Release, image, milestone on merge) | done (`release.yml`) |
 | 2 | CONTRIBUTING.md, PR template, CODEOWNERS | done |
 | 2 | Badge row (CI, release, license) | done |
+| 2 | README follows the playbook README standard: what and why first, short, depth in `docs/` | done |
+| 2 | `AGENTS.md` with the repository standard pointer, and a `CLAUDE.md` that imports it | done |
 | 3 | Coverage gate, quality gate | done (Codecov, SonarCloud) |
 
 Statuses that name a PR become plain "done" once it merges. Keep this table current when an item changes status.
@@ -72,7 +74,7 @@ container image on ghcr.io (`ghcr.io/solarssk/drive-scanner-bridge:<version>`, `
 1. Close or move every issue in the milestone (named exactly like the version, e.g. `0.1.3`).
 2. Bump the version everywhere it is written: `uploader/pyproject.toml`,
    `uploader/scanner_drive_bridge/__init__.py`, the `image:` tag in `docker-compose.yml`, and
-   the README references (`grep -rn "<old version>"`).
+   every image tag in the README and docs (`grep -rn "<old version>" README.md docs`).
 3. `CHANGELOG.md`: turn `[Unreleased]` into `## [x.y.z] - YYYY-MM-DD` (that exact heading
    format; the release notes are built from it) and add a fresh empty `[Unreleased]`.
 4. Open a `release/x.y.z` PR. The owner merges it once CI is green, **including the `Build,
