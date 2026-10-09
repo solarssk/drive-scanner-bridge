@@ -52,8 +52,13 @@ Statuses that name a PR become plain "done" once it merges. Keep this table curr
 
 ## Required status checks (branch protection on `main`)
 
-`Unit tests`, `Build uploader image`, `Validate docker-compose.yml`,
-`Code quality (Sonar + Codecov)`, `SonarCloud Code Analysis`, `codecov/patch`.
+`Unit tests`, `Build uploader image`, `Validate docker-compose.yml`.
+
+SonarCloud (`SonarCloud Code Analysis`), Codecov (`codecov/patch`) and the `Code quality
+(Sonar + Codecov)` job are **report-only**: they run and report on every PR where the tokens
+are available, but do not gate a merge. That is how the owner's other repositories work, and it
+is what keeps PRs that cannot read repository secrets (Dependabot, forks) from sitting
+`BLOCKED` on checks that will never be posted: the two external checks have no "skipped" state.
 
 Renaming a job changes its check name; update the branch protection contexts in the same
 change or every PR will wait forever for a check that no longer exists.
@@ -132,13 +137,11 @@ Recovery and manual use:
 
 ## Dependabot
 
-- Updates are weekly. PRs authored by `dependabot[bot]` do **not** receive repository
-  Actions secrets, only a separate Dependabot secrets store. `SONAR_TOKEN` and
-  `CODECOV_TOKEN` must therefore exist under *Settings > Secrets and variables >
-  Dependabot* as well, or every Dependabot PR stays `BLOCKED` (SonarCloud and Codecov
-  report nothing and have no "skipped" state).
-- Fallback when that store is empty: apply the same changes in one human-authored PR and
-  close the Dependabot PRs. Verify every new SHA first (see "Pinning actions" below).
+- Updates are weekly and grouped; the owner merges them by hand. PRs authored by
+  `dependabot[bot]` do **not** receive repository Actions secrets, so the `Code quality` job
+  skips its Sonar and Codecov steps there. Those are report-only, so such a PR is mergeable once
+  the three required checks are green; nothing needs to be added to the Dependabot secrets store.
+- Verify every new SHA first (see "Pinning actions" below).
 - `if:` conditions cannot read `secrets.*`. Route the check through a job-level `env:`
   value, as the `code-quality` job does.
 
