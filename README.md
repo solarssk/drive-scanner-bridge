@@ -235,7 +235,7 @@ cd scanner-drive-bridge
 cp .env.example .env
 # edit .env: at minimum set SYNOLOGY_HOST, SMB1_STATIC_IP, SMB_PRT01_PASSWORD
 printf '%s' 'the prt01 DSM password' > secrets/synology_password
-docker compose up -d   # pulls ghcr.io/solarssk/drive-scanner-bridge:0.1.2
+docker compose up -d   # pulls ghcr.io/solarssk/drive-scanner-bridge:0.1.3
 docker compose logs -f drive-uploader
 ```
 
@@ -243,7 +243,7 @@ The image is published to ghcr.io on every release for `linux/amd64` and
 `linux/arm64`. If the package is private, run `docker login ghcr.io` first with a
 GitHub personal access token that has `read:packages`. To build it yourself instead
 (development, or no registry access), build under the same name before `up`:
-`docker build -t ghcr.io/solarssk/drive-scanner-bridge:0.1.2 ./uploader`.
+`docker build -t ghcr.io/solarssk/drive-scanner-bridge:0.1.3 ./uploader`.
 
 `secrets/synology_password` is required. `secrets/synology_ca` is optional
 (only needed if `SYNOLOGY_VERIFY_TLS=true` and the NAS's HTTPS certificate
@@ -297,7 +297,7 @@ Portainer instance, not just reasoned about):
 
 Steps:
 
-1. **The image**: nothing to build. The stack pulls `ghcr.io/solarssk/drive-scanner-bridge:0.1.2`
+1. **The image**: nothing to build. The stack pulls `ghcr.io/solarssk/drive-scanner-bridge:0.1.3`
    itself. If the package is private, add credentials once: Portainer ->
    Registries -> Add registry -> Custom, URL `ghcr.io`, your GitHub username
    and a personal access token with `read:packages` (or make the package
@@ -403,7 +403,7 @@ way -- see `uploader/Dockerfile` for the exact stages.
 
 Re-run the scan yourself after any base image bump:
 ```bash
-docker scout cves ghcr.io/solarssk/drive-scanner-bridge:0.1.2
+docker scout cves ghcr.io/solarssk/drive-scanner-bridge:0.1.3
 ```
 
 The 0/0/0/0 result above reflects the state at the time the distroless
