@@ -7,12 +7,12 @@ and PRs readable months later:
 - **Before opening a PR:** assign yourself, attach at least one label
   (`security`, `ci`, `governance`, `bug`, `enhancement`, `documentation`,
   ...), and attach it to the current milestone if one is open. Dependabot's
-  own PRs are exempt -- it labels and targets them automatically.
+  own PRs are exempt: it labels and targets them automatically.
 - **Branch naming:** `<type>/<short-description>`, e.g.
   `maintenance/governance-ci-hardening`. `type` is one of `fix`, `feature`,
   `maintenance`, `security`, `docs`, `release` (`release/x.y.z` for a release PR).
 - **Before merging:** the required CI checks (`Unit tests`,
-  `Build uploader image`, `Validate docker-compose.yml`) must pass -- branch
+  `Build uploader image`, `Validate docker-compose.yml`) must pass. Branch
   protection on `main` enforces this. SonarCloud and Codecov report on every PR
   but are report-only signals, not merge gates (same as the owner's other repos).
 - **Running the checks locally:** see [docs/development.md](docs/development.md). Agents:
@@ -26,5 +26,6 @@ For anything touching credential handling, DSM authentication, or the
 SMB1/Samba legacy-auth settings, see [SECURITY.md](SECURITY.md) instead of
 opening a public issue or PR discussion.
 
-Maintenance conventions, the release process and the playbook checklist are in
-[docs/MAINTENANCE.md](docs/MAINTENANCE.md). The roadmap is in [docs/roadmap/](docs/roadmap/).
+Maintenance conventions and the playbook checklist are in
+[docs/maintenance.md](docs/maintenance.md), the release process in
+[docs/releasing.md](docs/releasing.md), and the roadmap in [docs/roadmap/](docs/roadmap/README.md).

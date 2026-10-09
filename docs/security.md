@@ -1,7 +1,8 @@
 # Security
 
-How the bridge handles credentials, how the container is locked down, and how the image
-is built and scanned. To report a vulnerability, use [SECURITY.md](../SECURITY.md).
+**In short:** the password lives in a read-only file, never in the image, a log or a URL.
+The container runs with the least privilege that works, and the image is built from pinned,
+scanned bases. To report a vulnerability, use [SECURITY.md](../SECURITY.md).
 
 ## Contents
 
@@ -14,7 +15,22 @@ is built and scanned. To report a vulnerability, use [SECURITY.md](../SECURITY.m
 
 ## Secrets and credentials
 
-Nothing secret is stored in the source or in the image.
+Nothing secret is stored in the source or in the image. This is where each secret lives and
+where it goes:
+
+```mermaid
+flowchart LR
+    subgraph host["NAS filesystem (not in git)"]
+        pw["secrets/synology_password"]
+        env[".env"]
+    end
+    subgraph c["drive-uploader<br/>read-only, non-root"]
+        app["worker"]
+    end
+    pw -->|"bind mount, read-only<br/>/run/secrets"| app
+    app -->|"HTTPS, certificate verified,<br/>password in the POST body"| dsm["☁️ DSM / Synology Drive"]
+    env -->|"SMB_PRT01_PASSWORD"| smb["smb1-printer"]
+```
 
 | Secret | How it is supplied |
 |---|---|
@@ -24,11 +40,13 @@ Nothing secret is stored in the source or in the image.
 
 `secrets/` and `.env` are ignored by git. Only `secrets/.gitkeep` is tracked.
 
-The password and the session id never appear in logs. The login request sends the
-credentials in the POST body, not in the query string, because a query string ends up in
-connection-error messages and in the DSM access log. A live smoke test caught this early;
-tests in `tests/test_synology_client.py` and `tests/test_config.py` guard against a
-regression.
+> [!IMPORTANT]
+> The password and the session id never appear in logs. The login request sends the
+> credentials in the POST body, not in the query string, because a query string ends up in
+> connection-error messages and in the DSM access log.
+
+A live smoke test caught this early. Tests in `tests/test_synology_client.py` and
+`tests/test_config.py` guard against a regression.
 
 ## Two-factor authentication
 

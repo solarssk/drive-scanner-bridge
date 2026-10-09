@@ -1,9 +1,8 @@
 # Configuration
 
-Every setting of the uploader, with its default and what it does. The values are read
-from environment variables when the container starts. With the shipped
-`docker-compose.yml`, you set them in `.env` (Compose) or in the stack's environment
-section (Portainer).
+**In short:** every setting of the uploader, with its default and what it does. Set them in
+`.env` (Compose) or in the stack's environment section (Portainer). The container reads
+them once, at start, so restart it after a change.
 
 ## Contents
 
@@ -20,9 +19,12 @@ section (Portainer).
 
 - Copy `.env.example` to `.env` and edit it. `.env` is ignored by git.
 - The `In .env` column in the tables below says whether the shipped compose file passes
-  the setting on. A setting marked "no" is read by the service but cannot be changed
-  through `.env`; set it with `docker compose exec -e NAME=value ...` for a one-off
-  command, or add it to the `environment:` block of `docker-compose.yml`.
+  the setting on.
+
+  > [!NOTE]
+  > A setting marked "no" is read by the service but cannot be changed through `.env`.
+  > Use `docker compose exec -e NAME=value ...` for a one-off command, or add it to the
+  > `environment:` block of `docker-compose.yml`.
 - Secrets can be given as a value (`NAME`) or as the path of a file that contains it
   (`NAME_FILE`). If both are set, the file wins. The shipped compose file uses files; see
   [security.md](security.md#secrets-and-credentials).
@@ -77,18 +79,17 @@ By default `/incoming` is a staging area that is emptied after each confirmed up
 | `LOCAL_RETENTION_HOURS` | unset | yes | Only with `DELETE_AFTER_UPLOAD=false`: remove a kept copy this many hours after its confirmed upload. Unset keeps copies forever. |
 | `TIMESTAMP_UPLOAD_FILENAME` | `false` | yes | Prefix the name **sent to Synology Drive** with today's date, for example `2026-08-22_SCN_0001.pdf`. Cosmetic. |
 
-**When to set `DELETE_AFTER_UPLOAD=false`.** Some scanners pick their next filename by
-listing the share and counting past the highest number. If the share is always empty,
-such a scanner can keep reusing the same name. Keeping the uploaded files in `/incoming`
-fixes that. Content-hash deduplication still guarantees that a kept file is never
-uploaded twice, so this only affects disk usage.
+> [!TIP]
+> **When to set `DELETE_AFTER_UPLOAD=false`.** Some scanners pick their next filename by
+> listing the share and counting past the highest number. If the share is always empty,
+> such a scanner can keep reusing the same name. Keeping the uploaded files in `/incoming`
+> fixes that.
 
-**Retention.** `LOCAL_RETENTION_HOURS` stops the kept copies from growing without bound
-while leaving the scanner enough recent history to number correctly. Cleanup checks the
-content hash first, so a new scan that reuses an old name is never removed.
-
-**Date prefix.** `TIMESTAMP_UPLOAD_FILENAME` never changes the local filename. The local
-name must stay exactly as the scanner wrote it, or the numbering trick above breaks.
+| Topic | How it behaves |
+|---|---|
+| Duplicates with `DELETE_AFTER_UPLOAD=false` | Content-hash deduplication still guarantees a kept file is never uploaded twice. Only disk usage changes. |
+| `LOCAL_RETENTION_HOURS` | Stops kept copies from growing without bound while leaving the scanner enough history to number correctly. Cleanup checks the content hash first, so a new scan that reuses an old name is never removed. |
+| `TIMESTAMP_UPLOAD_FILENAME` | Never changes the local filename. The local name must stay exactly as the scanner wrote it, or the numbering above breaks. |
 
 ## Health check and logging
 

@@ -81,7 +81,7 @@ def image_block(version: str) -> str:
             "",
             f"- [Full CHANGELOG]({REPO_URL}/blob/main/CHANGELOG.md)",
             f"- [README]({REPO_URL}#readme)",
-            f"- [Maintenance guide]({REPO_URL}/blob/main/docs/MAINTENANCE.md)",
+            f"- [Releasing and maintenance]({REPO_URL}/blob/main/docs/releasing.md)",
         ]
     )
 

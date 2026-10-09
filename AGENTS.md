@@ -40,7 +40,7 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"   # once
 - Python 3.13, line length 120, ruff rules `E,F,I,B`, mypy clean.
 - The only runtime dependency is `requests`. Do not add dependencies without a reason that
   is written down in the pull request. Runtime dependencies are hash-locked; see
-  [docs/MAINTENANCE.md](docs/MAINTENANCE.md#python-dependencies) before changing them.
+  [docs/maintenance.md](docs/maintenance.md#python-dependencies) before changing them.
 - Secrets must never reach a log, an exception message or a URL query string.
 - The image is distroless: it has no shell, no `cat`, no `sh`. Use `python3` in any command
   you document or run inside the container.
@@ -64,7 +64,7 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"   # once
   hand. The release pull request bumps the version in `uploader/pyproject.toml`,
   `uploader/scanner_drive_bridge/__init__.py`, the `image:` tag in `docker-compose.yml`, every
   image tag in the docs (`grep -rn "<old version>" README.md docs`), and turns `[Unreleased]`
-  into `## [X.Y.Z] - YYYY-MM-DD`. Details: [docs/MAINTENANCE.md](docs/MAINTENANCE.md).
+  into `## [X.Y.Z] - YYYY-MM-DD`. Details: [docs/releasing.md](docs/releasing.md).
 - Required checks on `main`: `Unit tests`, `Build uploader image`,
   `Validate docker-compose.yml`. SonarCloud and Codecov are report-only. Codecov counts every
   changed line toward patch coverage, so avoid cosmetic edits to executable lines the tests
@@ -72,13 +72,9 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"   # once
 
 ## Documentation
 
-- Keep each fact in one place. The README is the front page; depth belongs in `docs/`.
-- When behavior, a setting or a deployment step changes, update the docs in the same pull
-  request. The settings table in [docs/configuration.md](docs/configuration.md) must match
-  `uploader/scanner_drive_bridge/config.py`.
-- Every command and relative link must work. Check anchors after renaming a heading.
-- Write plainly: short sentences, the specific thing instead of a general claim, no em
-  dashes, no filler words such as "leverage", "robust" or "seamless".
+Depth belongs in `docs/`, and the README stays a front page. Writing, structure and file-name
+rules are in [docs/AGENTS.md](docs/AGENTS.md). When behavior, a setting or a deployment step
+changes, update the docs in the same pull request.
 
 ## What you must not do
 
@@ -95,7 +91,19 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"   # once
 |---|---|
 | `uploader/` | The service, its tests and its `Dockerfile` |
 | `scripts/` | Release-notes script used by the release workflow |
-| `docs/` | Topic documentation; see the table in [README.md](README.md#documentation) |
-| `docs/roadmap/` | The 0.2.0 plan |
+| `docs/` | Topic documentation; index in [docs/README.md](docs/README.md) |
+| `docs/roadmap/` | Plans for what comes next |
 | `.github/workflows/` | CI, CodeQL, image publishing, release, weekly image scan |
 | `docker-compose.yml`, `.env.example` | Deployment files |
+
+## Nested instructions
+
+Some folders have their own `AGENTS.md`. The closest file to the one you are editing wins,
+and explicit instructions from the user win over all of them. Each has a `CLAUDE.md` that
+imports it, so Claude Code loads it too.
+
+| Folder | Read it before you |
+|---|---|
+| [`uploader/`](uploader/AGENTS.md) | change the service or its tests |
+| [`.github/`](.github/AGENTS.md) | change a workflow, a template or Dependabot |
+| [`docs/`](docs/AGENTS.md) | write or restructure documentation |

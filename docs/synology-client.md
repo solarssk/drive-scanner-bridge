@@ -1,7 +1,9 @@
 # The Synology Drive client
 
-Why the project has its own small client for the Synology Drive API instead of a library,
-and what has been verified against a real NAS.
+**In short:** the project has its own small client for the Synology Drive API, because the
+library that was reviewed disables TLS verification for typical NAS addresses, pulls in
+`selenium`, and does not match this NAS. This page lists what was found and what has been
+verified on real hardware.
 
 ## Contents
 
@@ -13,23 +15,15 @@ and what has been verified against a real NAS.
 
 Before writing code, the library
 [`zbjdonald/synology-drive-api`](https://github.com/zbjdonald/synology-drive-api) was
-reviewed as a dependency. It was rejected for these reasons:
+reviewed as a dependency. It was rejected:
 
-- **Unmaintained.** The last commit is from 18 December 2023.
-- **It silently disables TLS verification for a common setup.** Its `SynologySession`
-  forces `verify=False` for any HTTPS host whose address looks like an IPv4 literal
-  (`netloc.count('.') >= 3`). That is how most NAS devices are reached on a LAN without
-  internal DNS, so `SYNOLOGY_VERIFY_TLS` and `SYNOLOGY_CA_FILE` would have no effect.
-- **It pulls in a heavy, unused dependency.** Its `pyproject.toml` requires `selenium`
-  unconditionally, for a spreadsheet-conversion feature this service never uses. That
-  does not belong in a container that should have a small attack surface.
-- **It has an unresolved login problem.** An open issue reports `error_code 103` ("method
-  does not exist") at login, which fits a hardcoded API version that no longer matches
-  newer DSM and Drive Server builds.
-- **Its upload parameters do not match this NAS.** It confirmed the general shape of the
-  call (`POST entry.cgi`, `api=SYNO.SynologyDrive.Files`, `method=upload`, a multipart
-  file part). But its parameter names (`dest_folder_path`, a fixed `version=2`) belong to
-  an older API version; see [Compatibility](#compatibility).
+| Concern | The library | This client |
+|---|---|---|
+| Maintenance | Unmaintained: the last commit is from 18 December 2023 | Small enough to own |
+| TLS | Forces `verify=False` for any HTTPS host that looks like an IPv4 literal (`netloc.count('.') >= 3`), which is how most NAS devices are reached on a LAN. `SYNOLOGY_VERIFY_TLS` and `SYNOLOGY_CA_FILE` would have no effect. | Verification is always an explicit choice |
+| Dependencies | Requires `selenium` unconditionally, for a spreadsheet-conversion feature this service never uses | Only `requests` |
+| API versions | A hardcoded `version=2`. An open issue reports `error_code 103` ("method does not exist") at login, which fits version drift. | Versions are discovered from the NAS |
+| Upload call | Right shape (`POST entry.cgi`, `method=upload`, multipart file) but parameters (`dest_folder_path`) from an older API version | Parameters verified on a real NAS; see [Compatibility](#compatibility) |
 
 ## What the client does
 

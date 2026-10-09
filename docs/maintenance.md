@@ -1,0 +1,154 @@
+# Maintenance guide
+
+**In short:** how this repository is kept in order. It records the playbook tier, the
+conventions that are not obvious from the code, and the pitfalls already hit. Contribution
+rules are in [CONTRIBUTING.md](../CONTRIBUTING.md). Releases are in
+[releasing.md](releasing.md).
+
+## Contents
+
+- [Playbook tier](#playbook-tier)
+- [Conventions](#conventions)
+- [Required status checks](#required-status-checks)
+- [Dependabot](#dependabot)
+- [Python dependencies](#python-dependencies)
+- [Pinning actions](#pinning-actions)
+- [Container scanning](#container-scanning)
+
+## Playbook tier
+
+This repository follows the [solarssk playbook](https://github.com/solarssk/playbook) at
+**Tier 2**: a single-purpose tool that handles credentials and has real dependents.
+SonarCloud and Codecov are Tier 3 items that were added deliberately.
+
+> [!NOTE]
+> Do not add more Tier 3 machinery (DAST, SBOM, a wiki) unless the scope actually grows.
+
+| Tier | Item | Status |
+|---|---|---|
+| 0 | LICENSE matching the README | ✅ |
+| 0 | `.github/CODEOWNERS` | ✅ |
+| 0 | Dependabot security updates on | ✅ |
+| 0 | Delete head branches on merge | ✅ |
+| 0 | Branch protection, enforced for admins | ✅ |
+| 1 | CI on push and PR (tests, image build, compose check) | ✅ |
+| 1 | Lint (ruff) and type check (mypy) | ✅ |
+| 1 | Actions pinned to commit SHA with a version comment | ✅ see [Pinning actions](#pinning-actions) |
+| 1 | `permissions` set to the minimum | ✅ |
+| 1 | Base images pinned by digest | ✅ |
+| 1 | Python dependencies hash-locked | ✅ `requirements.txt` |
+| 1 | SECURITY.md, one structured issue template | ✅ |
+| 2 | Dependency audit (`pip-audit`) | ✅ |
+| 2 | Secret scanning | ✅ GitHub secret scanning and push protection |
+| 2 | SAST (CodeQL) on PR and weekly | ✅ |
+| 2 | Dependabot for every ecosystem in use (pip, actions, docker) | ✅ |
+| 2 | Blocking container scan | ✅ see [Container scanning](#container-scanning) |
+| 2 | `concurrency:` group in every workflow | ✅ |
+| 2 | Release automation (tag, Release, image, milestone) | ✅ `release.yml` |
+| 2 | CONTRIBUTING.md, PR template, CODEOWNERS | ✅ |
+| 2 | Badge row (CI, release, license) | ✅ |
+| 2 | README follows the playbook README standard, depth in `docs/` | ✅ |
+| 2 | `AGENTS.md` with the standard pointer, `CLAUDE.md` that imports it | ✅ |
+| 3 | Coverage gate and quality gate | ✅ Codecov, SonarCloud (report-only) |
+
+Keep this table current when an item changes status.
+
+## Conventions
+
+| Topic | Rule |
+|---|---|
+| Issues and PRs | Each has an **assignee**, at least one **label** and a **milestone**. Dependabot PRs are exempt. |
+| Labels in use | `security`, `ci`, `governance`, `dependencies`, `github_actions`, `documentation`, `bug`, `enhancement` |
+| Branch names | `<type>/<short-description>`, type is `fix`, `feature`, `maintenance`, `security`, `docs` or `release` |
+| Milestones | One per release, named exactly like the version (`0.1.4`). Closed automatically when the release is published. |
+| Merging | The owner merges. Required checks apply to admins too, with no bypass. |
+| Doc file names | Lowercase kebab-case in `docs/` (`troubleshooting.md`). Uppercase only for the conventional root files (`README`, `AGENTS`, `CLAUDE`, `CONTRIBUTING`, `SECURITY`, `CHANGELOG`, `LICENSE`). Details: [docs/AGENTS.md](AGENTS.md). |
+| Roadmap | Lives in one place: [docs/roadmap/](roadmap/README.md). |
+
+## Required status checks
+
+Branch protection on `main` requires exactly these three checks:
+
+| Check | Job in `ci.yml` |
+|---|---|
+| `Unit tests` | `test` |
+| `Build uploader image` | `build-image` |
+| `Validate docker-compose.yml` | `compose-lint` |
+
+SonarCloud (`SonarCloud Code Analysis`), Codecov (`codecov/patch`) and the
+`Code quality (Sonar + Codecov)` job are **report-only**. They run and report wherever the
+tokens exist, but they do not gate a merge. This matches the owner's other repositories.
+
+> [!IMPORTANT]
+> Renaming a job changes its check name. Update the branch protection contexts in the same
+> change, or every pull request waits forever for a check that no longer exists.
+
+The reason for report-only: the two external checks have no "skipped" state. A pull
+request that cannot read repository secrets (Dependabot, forks) never receives them, so
+requiring them would leave those pull requests blocked for good.
+
+## Dependabot
+
+- Updates are weekly and grouped (one PR per ecosystem per week). The owner merges them
+  by hand.
+- Dependabot PRs do **not** receive repository Actions secrets, so the `Code quality` job
+  skips its Sonar and Codecov steps. Those are report-only, so the PR is mergeable once the
+  three required checks are green. Nothing needs to be added to the Dependabot secrets store.
+- Verify every new action SHA first; see [Pinning actions](#pinning-actions).
+- `if:` conditions cannot read `secrets.*`. Route the check through a job-level `env:`
+  value, as the `code-quality` job does.
+
+## Python dependencies
+
+Runtime dependencies are hash-locked. `uploader/requirements.in` is the input and
+`uploader/requirements.txt` is the generated output. The Dockerfile and CI install it with
+`--require-hashes`. Dependabot's `pip` ecosystem keeps both current.
+
+To regenerate by hand, with Python 3.13:
+
+```bash
+cd uploader && pip-compile --generate-hashes --strip-extras -o requirements.txt requirements.in
+```
+
+Keep `requirements.in` in sync with `[project].dependencies` in `pyproject.toml`. CI
+enforces it: the last step of the `Unit tests` job installs the lock plus the package with
+`--no-deps` (as the Dockerfile does) in a throwaway venv and runs `pip check`. That fails
+if `pyproject.toml` declares a dependency the lock does not contain.
+
+Dev tools (ruff, mypy, pytest) are version ranges on purpose. They do not ship in the image.
+
+## Pinning actions
+
+Pin to the **commit** SHA of the tag, with the version as a trailing comment. For annotated
+tags, `git ls-remote --tags <repo> refs/tags/<tag>` returns the *tag object*, not the
+commit. Ask for the peeled ref as well:
+
+```bash
+git ls-remote --tags https://github.com/OWNER/REPO "refs/tags/vX.Y.Z" "refs/tags/vX.Y.Z^{}"
+# use the ^{} line when present, otherwise the plain line
+```
+
+> [!TIP]
+> Validate workflows with `actionlint`, not just a YAML parser. GitHub rejects some
+> expressions that are valid YAML.
+
+`trivy-action` and `codecov-action` were once pinned to tag-object SHAs. Dependabot's
+"same version, new SHA" pull requests were that correction.
+
+## Container scanning
+
+| Where | Scope | Effect |
+|---|---|---|
+| Pull requests (`ci.yml`) | Trivy, CRITICAL only, fixed vulnerabilities only | Blocks the PR |
+| Weekly (`weekly-image-scan.yml`) | CRITICAL and HIGH, fixed only | Reports, does not block |
+| Release (`release-image.yml`) | CRITICAL and HIGH, fixed only, both platforms, before the push | Blocks the publish |
+
+HIGH findings in the base image follow the publisher's rebuild cadence. Gating pull
+requests on them would block unrelated work for days.
+
+A red weekly run means a fixed vulnerability exists upstream and the base image has not
+picked it up yet. Check the log, then bump or change the base image.
+
+> [!WARNING]
+> Do not blanket-ignore findings. Any `.trivyignore` entry needs a CVE id, a reason and an
+> expiry date.

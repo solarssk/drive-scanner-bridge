@@ -1,9 +1,12 @@
 # Development
 
-How to set up a development environment and run the checks. The conventions for issues,
-pull requests and releases are in [CONTRIBUTING.md](../CONTRIBUTING.md) and
-[MAINTENANCE.md](MAINTENANCE.md). Instructions for AI coding agents are in
-[AGENTS.md](../AGENTS.md).
+**In short:** set up Python 3.13, run three checks, and read the code layout.
+
+| Looking for | Go to |
+|---|---|
+| Issue, PR and branch rules | [CONTRIBUTING.md](../CONTRIBUTING.md), [maintenance.md](maintenance.md) |
+| How to publish a release | [releasing.md](releasing.md) |
+| Rules for AI coding agents | [AGENTS.md](../AGENTS.md), [uploader/AGENTS.md](../uploader/AGENTS.md) |
 
 ## Set up
 
@@ -62,7 +65,7 @@ The Synology API is mocked completely, so the tests make no network calls. They 
 ## Dependencies
 
 Runtime dependencies are hash-locked. How to change the lock, and how the dependency
-checks work, is described in [MAINTENANCE.md](MAINTENANCE.md#python-dependencies).
+checks work, is described in [maintenance.md](maintenance.md#python-dependencies).
 
 ## Build the image locally
 

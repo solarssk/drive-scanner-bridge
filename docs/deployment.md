@@ -1,12 +1,13 @@
 # Deployment
 
-How to run the bridge on a Synology NAS, update it, roll it back and back it up. Pick one
-of the two install paths: [Docker Compose](#install-with-docker-compose) over SSH, or
-[Portainer](#install-with-portainer).
+**In short:** run the stack with Docker Compose over SSH or with Portainer, check the
+connection before you trust it with real scans, and update by changing one image tag. This
+page also covers rollback and backup.
 
 ## Contents
 
 - [Before you start](#before-you-start)
+- [Choose an install path](#choose-an-install-path)
 - [Install with Docker Compose](#install-with-docker-compose)
 - [Install with Portainer](#install-with-portainer)
 - [Check that it works](#check-that-it-works)
@@ -16,19 +17,30 @@ of the two install paths: [Docker Compose](#install-with-docker-compose) over SS
 
 ## Before you start
 
-You need:
-
-- Docker (Container Manager) on the NAS.
-- The Docker network `smb1_network`, which already exists in the setup this project
-  extends.
-- The Team Folder `printer` in Synology Drive. The bridge does not create it.
-- A DSM account for the uploads (the examples use `prt01`) with write access to that Team
-  Folder.
+| You need | Notes |
+|---|---|
+| Docker (Container Manager) on the NAS | |
+| The Docker network `smb1_network` | It already exists in the setup this project extends. |
+| The Team Folder `printer` in Synology Drive | The bridge does not create it. |
+| A DSM account for the uploads | The examples use `prt01`. It needs write access to that Team Folder. |
 
 The image is published to `ghcr.io/solarssk/drive-scanner-bridge` for `linux/amd64` and
-`linux/arm64`, one exact version tag per release (there is no `latest`). If the package is
-private, log in once with `docker login ghcr.io` and a GitHub personal access token with
-the `read:packages` scope.
+`linux/arm64`. Each release has one exact version tag, and there is no `latest`.
+
+> [!TIP]
+> If the package is private, log in once with `docker login ghcr.io` and a GitHub personal
+> access token with the `read:packages` scope.
+
+## Choose an install path
+
+| | Docker Compose | Portainer |
+|---|---|---|
+| Where you work | SSH on the NAS | The Portainer web UI |
+| How the image arrives | `docker compose up` pulls it | The stack pulls it |
+| How you update | `git pull`, then `docker compose pull` | Edit the image tag in the stack, update the stack |
+| Extra setting | none | `PROJECT_DIR`, so the `secrets` mount resolves |
+
+Both use the same `docker-compose.yml`, unchanged.
 
 ## Install with Docker Compose
 
@@ -41,7 +53,7 @@ the `read:packages` scope.
    ```
 
 2. Edit `.env`. At minimum set `SYNOLOGY_HOST`, `SMB1_STATIC_IP` and `SMB_PRT01_PASSWORD`.
-   All settings are listed in [configuration.md](configuration.md).
+   Every setting is listed in [configuration.md](configuration.md).
 
 3. Store the DSM password in a file. It is mounted into the container read-only:
 
@@ -59,33 +71,51 @@ the `read:packages` scope.
    docker compose logs -f drive-uploader
    ```
 
-To build the image yourself instead of pulling it (development, or no registry access),
-build it under the name the compose file expects before `up`:
-`docker build -t ghcr.io/solarssk/drive-scanner-bridge:0.1.4 ./uploader`.
+   You should see `authenticated to Synology Drive` and
+   `destination team folder 'printer' verified`.
+
+<details>
+<summary>Build the image yourself instead of pulling it</summary>
+
+For development, or when there is no registry access, build under the name the compose
+file expects before `up`:
+
+```bash
+docker build -t ghcr.io/solarssk/drive-scanner-bridge:0.1.4 ./uploader
+```
+
+</details>
 
 ## Install with Portainer
 
-### Why this path differs
+<details>
+<summary>Why this path differs from plain Compose</summary>
 
-The Portainer container usually cannot read host paths such as `/volume1/...`, so a
-`build:` section that points at a host path fails with `Cannot locate specified
-Dockerfile`, even though the path is valid on the NAS. Bind mounts are not affected,
-because `dockerd` runs natively on DSM and sees the whole disk.
+The Portainer container usually cannot read host paths such as `/volume1/...`. A `build:`
+section that points at a host path then fails with `Cannot locate specified Dockerfile`,
+even though the path is valid on the NAS. Bind mounts are not affected, because `dockerd`
+runs natively on DSM and sees the whole disk.
 
 Portainer also tries to build any stack service that has a `build:` section, even when a
 matching image already exists. For that reason `docker-compose.yml` has no `build:` for
 `drive-uploader`. The image always comes from the registry, or must already exist locally
 under the same name.
 
-### Steps
+</details>
 
-1. **Image.** Nothing to build. The stack pulls `ghcr.io/solarssk/drive-scanner-bridge:0.1.4`.
-   If the package is private, add the registry once: Registries, Add registry, Custom, URL
-   `ghcr.io`, your GitHub user name and a token with `read:packages`.
+1. **Image.** Nothing to build: the stack pulls
+   `ghcr.io/solarssk/drive-scanner-bridge:0.1.4`. If the package is private, add the
+   registry once under Registries, Add registry, Custom, with URL `ghcr.io`, your GitHub
+   user name and a token with `read:packages`.
 
-   Without registry access, use Images, Build a new image, method **Upload**, and upload a
-   tarball of the contents of `uploader/` (the Dockerfile at the root of the archive). Name
-   the image exactly like the `image:` line in `docker-compose.yml`.
+   <details>
+   <summary>No registry access</summary>
+
+   Images, Build a new image, method **Upload**. Upload a tarball of the contents of
+   `uploader/`, with the Dockerfile at the root of the archive. Name the image exactly like
+   the `image:` line in `docker-compose.yml`.
+
+   </details>
 
 2. **Secret.** Create a folder on the NAS and put the password file in it, for example
    with File Station:
@@ -104,7 +134,7 @@ under the same name.
 
      | Variable | Value |
      |---|---|
-     | `PROJECT_DIR` | `/volume1/docker/scanner-drive-bridge` (so the `secrets` mount resolves) |
+     | `PROJECT_DIR` | `/volume1/docker/scanner-drive-bridge` |
      | `SMB_PRT01_PASSWORD` | the Samba password of `prt01` |
      | `SMB1_STATIC_IP` | a free fixed IP on your `smb1_network` subnet |
      | `SYNOLOGY_HOST` | the URL of your NAS, for example `https://192.0.2.10:5001` |
@@ -117,9 +147,6 @@ under the same name.
    the NAS is briefly unreachable, the uploader keeps retrying; see
    [Troubleshooting](troubleshooting.md).
 
-If you prefer SSH, the same `docker-compose.yml` works unchanged with the Compose steps
-above. `PROJECT_DIR` then stays unset and defaults to `.`.
-
 ## Check that it works
 
 Run the connectivity check before you trust the stack with real scans:
@@ -128,58 +155,58 @@ Run the connectivity check before you trust the stack with real scans:
 docker compose exec drive-uploader python3 -m scanner_drive_bridge.test_connection
 ```
 
-The image has no shell, so Portainer's console cannot open `/bin/sh`. Run the check from
-SSH with `docker exec drive-uploader python3 -m scanner_drive_bridge.test_connection`. For
-the console, see [Troubleshooting](troubleshooting.md#there-is-no-shell-in-the-container).
+It logs in, lists the Team Folders and confirms that `printer` can be listed. It does not
+upload anything.
 
-The check logs in, lists the Team Folders and confirms that `printer` can be listed. It
-does not upload anything. To also test an upload, opt in explicitly:
+To also test an upload, opt in explicitly. This uploads one small, uniquely named file and
+deletes it again:
 
 ```bash
 docker compose exec -e SCANNER_BRIDGE_TEST_UPLOAD=true drive-uploader \
   python3 -m scanner_drive_bridge.test_connection
 ```
 
-This uploads one small, uniquely named file and deletes it again.
+> [!NOTE]
+> The image has no shell, so Portainer's console cannot open `/bin/sh`. Run the check
+> from SSH, or see
+> [Troubleshooting](troubleshooting.md#there-is-no-shell-in-the-container) for the console.
 
 ## Update to a new release
 
-1. Read the release notes on the
+1. Read the notes on the
    [Releases page](https://github.com/solarssk/drive-scanner-bridge/releases).
-2. Use an exact version tag. Never use a moving tag, so it is always clear which image the
-   container runs.
+2. Change to the new exact version tag. Never use a moving tag, so it is always clear
+   which image the container runs.
 
-   With Compose:
-
-   ```bash
-   git pull                       # brings the new image tag in docker-compose.yml
-   docker compose pull drive-uploader
-   docker compose up -d
-   ```
-
-   With Portainer: change the version in the `image:` line of the stack YAML, then Update
-   the stack with **Re-pull image** ticked.
+   | Path | How |
+   |---|---|
+   | Compose | `git pull`, then `docker compose pull drive-uploader`, then `docker compose up -d` |
+   | Portainer | Change the version in the `image:` line of the stack YAML, then Update the stack with **Re-pull image** ticked |
 
 3. Watch `docker compose logs -f drive-uploader`. The start-up sequence shows
-   authentication, destination check and recovery of interrupted uploads.
+   authentication, the destination check and recovery of interrupted uploads.
 
-The volumes `uploader_state` (ledger and heartbeat) and `scanner_incoming` survive the
-update. Pending files and their retry history are kept.
+The volumes `uploader_state` and `scanner_incoming` survive the update. Pending files and
+their retry history are kept.
 
 ## Roll back
 
 This returns you to a plain Samba setup that writes straight into `/volume1/printer`,
-without the bridge. You need your previous compose file; it is not stored in this
-repository.
+without the bridge.
 
-1. Stop both containers. The volumes stay in place:
+> [!IMPORTANT]
+> You need your previous compose file. It is not stored in this repository.
 
-   ```bash
-   docker compose down
-   ```
+```mermaid
+flowchart LR
+    A["1. docker compose down<br/>volumes stay"] --> B["2. Restore the<br/>previous compose file"]
+    B --> C["3. Copy unuploaded files<br/>out of the volume"]
+    C --> D["4. docker compose up -d"]
+```
 
-2. Restore the previous compose file (the one that binds `/volume1/printer:/share`
-   and has no `drive-uploader` service).
+1. Stop both containers. The volumes stay in place: `docker compose down`.
+2. Restore the previous compose file, the one that binds `/volume1/printer:/share` and has
+   no `drive-uploader` service.
 3. Before starting it, copy out anything in the `scanner_incoming` volume that has not
    been uploaded yet:
 
@@ -197,7 +224,7 @@ upload, so step 3 copies exactly the files that never reached Synology Drive.
 
 | What | Advice |
 |---|---|
-| `scanner_incoming` | Working storage only. Files stay until the upload is confirmed. Do not back it up. |
+| `scanner_incoming` | Working storage only. Files stay until the upload is confirmed. **Do not back it up.** |
 | `uploader_state` | Worth keeping for a clean upload history, but not precious. If it is lost, files still in `/incoming` are hashed and uploaded again, and `autorename` prevents overwrites. |
 | Team Folder `printer` | A normal DSM shared folder. Cover it with your existing Hyper Backup or Snapshot Replication policy, as before. |
 | `/volume2/docker/smb1-printer/{state,log,cache}` | Samba data, unchanged from the earlier setup. Keep the backup treatment it had. |
