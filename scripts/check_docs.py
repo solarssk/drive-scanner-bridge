@@ -37,6 +37,21 @@ def slug(heading: str) -> str:
     return text.replace(" ", "-")
 
 
+def anchors_of(text: str) -> set[str]:
+    """Every anchor GitHub generates for the headings of a page, in document order.
+
+    A repeated heading gets a numeric suffix: the second "Configuration" is `configuration-1`.
+    """
+    seen: dict[str, int] = {}
+    anchors = set()
+    for heading in HEADING.findall(_prose(text)):
+        base = slug(heading)
+        count = seen.get(base, 0)
+        anchors.add(base if count == 0 else f"{base}-{count}")
+        seen[base] = count + 1
+    return anchors
+
+
 def markdown_files(root: Path) -> list[Path]:
     return sorted(
         p for p in root.rglob("*.md")
@@ -49,7 +64,7 @@ def _prose(text: str) -> str:
 
 
 def check_links(root: Path, files: list[Path]) -> list[str]:
-    anchors = {f: {slug(h) for h in HEADING.findall(_prose(f.read_text(encoding="utf-8")))} for f in files}
+    anchors = {f: anchors_of(f.read_text(encoding="utf-8")) for f in files}
     problems = []
     for f in files:
         for link in LINK.findall(_prose(f.read_text(encoding="utf-8"))):
@@ -62,7 +77,7 @@ def check_links(root: Path, files: list[Path]) -> list[str]:
                 problems.append(f"{rel}: link to a missing file: {link}")
             elif anchor and target.suffix == ".md":
                 if target not in anchors:
-                    anchors[target] = {slug(h) for h in HEADING.findall(_prose(target.read_text(encoding="utf-8")))}
+                    anchors[target] = anchors_of(target.read_text(encoding="utf-8"))
                 if anchor not in anchors[target]:
                     problems.append(f"{rel}: link to a missing anchor: {link}")
     return problems

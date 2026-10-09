@@ -27,6 +27,20 @@ def test_slug_matches_github_anchors():
     assert cd.slug("Login works, but error_code 103") == "login-works-but-error_code-103"
 
 
+def test_repeated_headings_get_githubs_numeric_suffixes():
+    text = "# T\n\n## Configuration\n\n## Other\n\n## Configuration\n\n```md\n## Configuration\n```\n## Configuration\n"
+    assert cd.anchors_of(text) == {"t", "configuration", "other", "configuration-1", "configuration-2"}
+
+
+def test_a_link_to_a_repeated_heading_is_valid_only_with_its_suffix(tmp_path):
+    root = _tree(tmp_path, {
+        "README.md": "# T\n\n[first](a.md#setup)\n[second](a.md#setup-1)\n[third](a.md#setup-2)\n",
+        "a.md": "# A\n\n## Setup\n\n## Setup\n",
+    })
+    problems = cd.check_links(root, cd.markdown_files(root))
+    assert problems == ["README.md: link to a missing anchor: a.md#setup-2"]
+
+
 def test_broken_file_and_anchor_links_are_reported(tmp_path):
     root = _tree(tmp_path, {
         "README.md": "# T\n\n[ok](docs/a.md#real)\n[bad file](docs/missing.md)\n[bad anchor](docs/a.md#nope)\n",
