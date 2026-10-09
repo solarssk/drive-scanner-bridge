@@ -18,10 +18,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `docs/configuration.md`: every setting with its default, whether `.env` can set it, and what
   it does (the README never listed them all).
 
-## [0.1.4] - 2026-10-09
-
-Fixes retention cleanup deleting a re-scanned file; also ships the release-automation hardening and the documentation audit.
-
 ### Changed
 
 - The README was about 600 lines and held everything. It is now a short front page (what the
@@ -32,6 +28,13 @@ Fixes retention cleanup deleting a re-scanned file; also ships the release-autom
   References in comments and docs point at the new pages. `docs/MAINTENANCE.md` is now
   `docs/maintenance.md` (all docs use lowercase file names) and the release process moved to
   `docs/releasing.md`. The release notes link to it.
+
+## [0.1.4] - 2026-10-09
+
+Fixes retention cleanup deleting a re-scanned file; also ships the release-automation hardening and the documentation audit.
+
+### Changed
+
 - SonarCloud and Codecov are report-only signals, as in the owner's other repositories: the
   external `SonarCloud Code Analysis` and `codecov/patch` checks and the `Code quality` job are no
   longer required status checks, and their steps use `continue-on-error`. Dependabot PRs cannot

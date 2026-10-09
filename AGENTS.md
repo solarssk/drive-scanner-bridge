@@ -56,7 +56,8 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"   # once
 - Branch names are `<type>/<short-description>` with type `fix`, `feature`, `maintenance`,
   `security`, `docs` or `release`.
 - Add an entry under `[Unreleased]` in [CHANGELOG.md](CHANGELOG.md) for anything visible to
-  someone running the bridge. Never edit released entries.
+  someone running the bridge. Never edit released entries: insert under the `[Unreleased]`
+  heading itself, not next to the text of another entry, which may already belong to a release.
 - GitHub Actions are pinned to the full commit SHA of the tag (the peeled `^{}` commit, not
   the tag object), with the version as a trailing comment.
 - A release is automatic. Merging a release pull request creates the tag, the GitHub
