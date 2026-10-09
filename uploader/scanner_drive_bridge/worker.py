@@ -199,12 +199,17 @@ class Worker:
                 )
 
     def _expire_record(self, record: FileRecord, retention_hours: float) -> None:
-        path = self._config.incoming_dir / record.original_name
+        incoming = self._config.incoming_dir
+        if not incoming.is_dir():
+            # The volume is missing or unmounted for now: a path that "does not
+            # exist" says nothing about the file, so keep every record.
+            return
+        path = incoming / record.original_name
         if not path.exists():
             # Nothing left on disk (removed by an older version's cleanup, or
             # by hand). The expired record would only make identical content
             # scanned later look like a duplicate that is removed on arrival.
-            self._state.delete(record.sha256)
+            self._forget(record)
             return
         try:
             digest, _size = hash_file(path)
@@ -222,7 +227,7 @@ class Worker:
                 "discarding the stale record instead of touching the file",
                 record.original_name,
             )
-            self._state.delete(record.sha256)
+            self._forget(record)
             return
         if not self._safe_remove(path):
             return  # still on disk: keep the record so cleanup retries next cycle
@@ -230,11 +235,32 @@ class Worker:
         # Keeping it would make a later scan of identical content (e.g.
         # re-scanning a page deleted from Drive) match this stale record and
         # be removed on arrival, before it was ever uploaded.
-        self._state.delete(record.sha256)
+        self._forget(record)
         logger.info(
             "removed local copy past retention window (%.1fh) file=%s",
             retention_hours, record.original_name,
         )
+
+    def _forget(self, record: FileRecord) -> None:
+        """Drop an expired record, unless a byte-identical file under another
+        name is still kept in the inbox: its deduplication state must outlive
+        the first name, or it would be uploaded again after a restart."""
+        if self._has_other_local_copy(record):
+            return
+        self._state.delete(record.sha256)
+
+    def _has_other_local_copy(self, record: FileRecord) -> bool:
+        try:
+            for entry in self._config.incoming_dir.iterdir():
+                if entry.name == record.original_name or not entry.is_file():
+                    continue
+                if entry.stat().st_size != record.size:
+                    continue
+                if hash_file(entry)[0] == record.sha256:
+                    return True
+        except OSError:
+            return True  # cannot tell: keeping a record is the safe side
+        return False
 
     # -- per-file handling ---------------------------------------------------
 

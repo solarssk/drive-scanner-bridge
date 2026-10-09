@@ -611,3 +611,76 @@ def test_retention_cleanup_error_does_not_break_the_loop(make_config, monkeypatc
     assert (config.incoming_dir / "SCN_0001.pdf").exists()
     assert any("local retention cleanup" in r.message for r in caplog.records)
     state.close()
+
+
+def test_retention_cleanup_keeps_records_while_incoming_volume_is_missing(make_config):
+    import shutil
+
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+    saved = config.incoming_dir.with_name("incoming-saved")
+    shutil.move(str(config.incoming_dir), str(saved))
+    clock.advance(25 * 3600)
+
+    worker._loop_once()
+
+    assert state.get(_sha(b"scan-content")).state == "uploaded"
+    state.close()
+
+
+def test_retention_cleanup_keeps_record_while_identical_copy_under_another_name_remains(make_config):
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+    other = config.incoming_dir / "SCN_0002.pdf"
+    other.write_bytes(b"scan-content")  # identical bytes, different name
+    (config.incoming_dir / "SCN_0003.pdf").write_bytes(b"unrelated-and-longer")  # skipped by size
+    (config.incoming_dir / "subdir").mkdir()  # skipped: not a file
+
+    clock.advance(25 * 3600)
+    worker._loop_once()
+
+    assert not (config.incoming_dir / "SCN_0001.pdf").exists()
+    assert other.exists()
+    assert state.get(_sha(b"scan-content")).state == "uploaded"  # dedup state outlives the first name
+    state.close()
+
+
+def test_retention_cleanup_keeps_record_when_other_files_cannot_be_inspected(make_config, monkeypatch):
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+    (config.incoming_dir / "SCN_0002.pdf").write_bytes(b"scan-content")
+    clock.advance(25 * 3600)
+
+    real_iterdir = type(config.incoming_dir).iterdir
+
+    def flaky_iterdir(self):
+        if self == config.incoming_dir and flaky_iterdir.armed:
+            raise OSError("input/output error")
+        return real_iterdir(self)
+
+    flaky_iterdir.armed = False
+    monkeypatch.setattr(type(config.incoming_dir), "iterdir", flaky_iterdir)
+    # arm only for the cleanup's own listing, after the stability poll ran
+    real_poll = worker._stability.poll
+
+    def poll_then_arm(directory):
+        result = real_poll(directory)
+        flaky_iterdir.armed = True
+        return result
+
+    monkeypatch.setattr(worker._stability, "poll", poll_then_arm)
+    worker._loop_once()
+
+    assert state.get(_sha(b"scan-content")).state == "uploaded"
+    state.close()
+
+
+def test_retention_cleanup_ignores_unrelated_files_when_forgetting_record(make_config):
+    config, client, worker, state, clock = _uploaded_worker(make_config)
+    (config.incoming_dir / "SCN_0002.pdf").write_bytes(b"different-size-content")
+    (config.incoming_dir / "SCN_0003.pdf").write_bytes(b"same-size-xx")  # same length, other bytes
+    (config.incoming_dir / "subdir").mkdir()
+    clock.advance(25 * 3600)
+
+    worker._loop_once()
+
+    assert not (config.incoming_dir / "SCN_0001.pdf").exists()
+    assert state.get(_sha(b"scan-content")) is None
+    state.close()
