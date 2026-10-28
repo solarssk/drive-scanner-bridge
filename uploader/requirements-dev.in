@@ -14,5 +14,5 @@ mypy>=2.4
 types-requests>=2.33
 pip-audit>=2.10
 # pip-audit reports the environment's own pip and setuptools, so they are locked as well.
-pip>=26.2
+pip>=26.2.2
 setuptools>=84
